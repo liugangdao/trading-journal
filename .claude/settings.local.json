@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(cd:*)",
-      "Bash(true:*)"
+      "Bash(true:*)",
+      "Bash(taskkill:*)",
+      "Bash(cd \"C:/liuz/code-1/trading-journal/client\" && npx vite build 2>&1)",
+      "Bash(cd \"C:/liuz/code-1/trading-journal\" && npm run install:all 2>&1)",
+      "Bash(cd \"C:/liuz/code-1/trading-journal\" && npm run build 2>&1)",
+      "Bash(sleep 3:*)",
+      "Bash(curl:*)",
+      "Bash(echo Trades::*)",
+      "Bash(sleep 2:*)",
+      "Bash(rm:*)"
     ]
   }
 }
