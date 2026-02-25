@@ -14,8 +14,8 @@ export default function Dashboard({ trades }) {
   if (!stats) {
     return (
       <div className="text-center py-20 text-muted">
-        <div className="text-4xl mb-3 opacity-50">No data</div>
-        <p className="text-sm">Statistics will appear after you record trades</p>
+        <div className="text-4xl mb-3 opacity-50">暂无数据</div>
+        <p className="text-sm">记录交易后将自动生成统计分析</p>
       </div>
     )
   }
@@ -28,23 +28,23 @@ export default function Dashboard({ trades }) {
     <div className="space-y-5">
       {/* KPI Row */}
       <div className="flex gap-3 flex-wrap">
-        <KpiCard label="Total Trades" value={stats.total} />
-        <KpiCard label="Win Rate" value={stats.winRate + "%"} color={stats.winRate >= 50 ? C.green : C.red} />
-        <KpiCard label="Net PnL" value={"$" + stats.totalNet.toFixed(0)} color={stats.totalNet >= 0 ? C.green : C.red} />
-        <KpiCard label="Profit Factor" value={stats.profitFactor} color={stats.profitFactor >= 1.5 ? C.green : C.gold} />
-        <KpiCard label="Avg R" value={stats.avgR + "R"} color={stats.avgR >= 0 ? C.green : C.red} />
-        <KpiCard label="Execution %" value={goodScoreRate + "%"} />
+        <KpiCard label="总交易数" value={stats.total} />
+        <KpiCard label="胜率" value={stats.winRate + "%"} color={stats.winRate >= 50 ? C.green : C.red} />
+        <KpiCard label="净盈亏" value={"$" + stats.totalNet.toFixed(0)} color={stats.totalNet >= 0 ? C.green : C.red} />
+        <KpiCard label="盈亏比" value={stats.profitFactor} color={stats.profitFactor >= 1.5 ? C.green : C.gold} />
+        <KpiCard label="平均R" value={stats.avgR + "R"} color={stats.avgR >= 0 ? C.green : C.red} />
+        <KpiCard label="执行合格率" value={goodScoreRate + "%"} />
       </div>
 
       {/* Core + Cost cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card title="Core Metrics">
-          {[["Wins", stats.wins], ["Losses", stats.losses], ["Avg Win", "$" + stats.avgWin.toFixed(2)], ["Avg Loss", "$" + stats.avgLoss.toFixed(2)]].map(([k, v]) => (
+        <Card title="核心指标">
+          {[["盈利笔数", stats.wins], ["亏损笔数", stats.losses], ["平均盈利", "$" + stats.avgWin.toFixed(2)], ["平均亏损", "$" + stats.avgLoss.toFixed(2)]].map(([k, v]) => (
             <StatRow key={k} label={k} value={v} />
           ))}
         </Card>
-        <Card title="Cost Analysis">
-          {[["Gross PnL", "$" + stats.totalGross.toFixed(2)], ["Spread Cost", "-$" + Math.abs(stats.totalSpread).toFixed(2)], ["Swap", (stats.totalSwap >= 0 ? "+$" : "-$") + Math.abs(stats.totalSwap).toFixed(2)], ["Net PnL", "$" + stats.totalNet.toFixed(2)]].map(([k, v]) => (
+        <Card title="成本分析">
+          {[["总毛利", "$" + stats.totalGross.toFixed(2)], ["点差成本", "-$" + Math.abs(stats.totalSpread).toFixed(2)], ["库存费", (stats.totalSwap >= 0 ? "+$" : "-$") + Math.abs(stats.totalSwap).toFixed(2)], ["净盈亏", "$" + stats.totalNet.toFixed(2)]].map(([k, v]) => (
             <StatRow key={k} label={k} value={v} />
           ))}
         </Card>
@@ -52,13 +52,13 @@ export default function Dashboard({ trades }) {
 
       {/* Cumulative PnL */}
       {stats.cumData.length > 1 && (
-        <Card title="Cumulative Net PnL">
+        <Card title="累计净盈亏曲线">
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={stats.cumData}>
               <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
               <XAxis dataKey="idx" stroke={C.muted} fontSize={10} />
               <YAxis stroke={C.muted} fontSize={10} tickFormatter={v => "$" + v} />
-              <Tooltip contentStyle={tooltipStyle} formatter={v => ["$" + v, "Cumulative PnL"]} />
+              <Tooltip contentStyle={tooltipStyle} formatter={v => ["$" + v, "累计盈亏"]} />
               <Line type="monotone" dataKey="pnl" stroke={C.accent} strokeWidth={2.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -67,7 +67,7 @@ export default function Dashboard({ trades }) {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card title="PnL by Pair">
+        <Card title="品种盈亏分布">
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={stats.byPair} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
@@ -80,7 +80,7 @@ export default function Dashboard({ trades }) {
             </BarChart>
           </ResponsiveContainer>
         </Card>
-        <Card title="Emotion Distribution">
+        <Card title="情绪分布">
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie data={stats.byEmo} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={70}
@@ -95,12 +95,12 @@ export default function Dashboard({ trades }) {
 
       {/* Detail Tables */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[["Strategy", stats.byStrat], ["Weekday", stats.byDay], ["Timeframe", stats.byTf], ["Emotion vs PnL", stats.byEmo]].map(([title, data]) => (
+        {[["策略分析", stats.byStrat], ["星期分析", stats.byDay], ["周期分析", stats.byTf], ["情绪与盈亏", stats.byEmo]].map(([title, data]) => (
           <Card key={title} title={title}>
             <table className="w-full text-[11px]">
               <thead>
-                <tr>{["Name","Count","Win%","PnL","Avg R"].map(h => (
-                  <th key={h} className="px-2 py-1.5 text-left text-muted font-semibold border-b border-border text-[10px] uppercase">{h}</th>
+                <tr>{["名称","笔数","胜率","盈亏","平均R"].map(h => (
+                  <th key={h} className="px-2 py-1.5 text-left text-muted font-semibold border-b border-border text-[10px]">{h}</th>
                 ))}</tr>
               </thead>
               <tbody>

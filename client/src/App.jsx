@@ -76,7 +76,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center text-muted">
-        Loading...
+        加载中...
       </div>
     )
   }
@@ -91,7 +91,7 @@ export default function App() {
               onClick={() => { setEditing(null); setShowForm(true) }}
               className="bg-accent text-white px-6 py-3 rounded-xl text-sm font-semibold cursor-pointer
                 hover:brightness-110 transition-all duration-200 mb-5">
-              + New Trade
+              + 新建交易
             </button>
           )}
 

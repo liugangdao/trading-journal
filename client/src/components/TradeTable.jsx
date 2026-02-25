@@ -1,6 +1,6 @@
 import { calcTrade } from '../lib/calc'
 
-const HEADERS = ["#", "Date", "Pair", "Dir", "Strategy", "TF", "Lots", "Entry", "Exit", "R", "Net PnL", "Score", "Emotion", ""]
+const HEADERS = ["#", "日期", "品种", "方向", "策略", "周期", "手数", "入场", "出场", "R", "净盈亏", "评分", "情绪", ""]
 
 export default function TradeTable({ trades, onEdit, onDelete }) {
   const computed = trades.map(calcTrade)
@@ -8,8 +8,8 @@ export default function TradeTable({ trades, onEdit, onDelete }) {
   if (computed.length === 0) {
     return (
       <div className="text-center py-20 text-muted">
-        <div className="text-4xl mb-3 opacity-50">No trades yet</div>
-        <p className="text-sm">Click the button above to record your first trade</p>
+        <div className="text-4xl mb-3 opacity-50">暂无交易记录</div>
+        <p className="text-sm">点击上方按钮记录你的第一笔交易</p>
       </div>
     )
   }
@@ -20,7 +20,7 @@ export default function TradeTable({ trades, onEdit, onDelete }) {
         <thead>
           <tr className="border-b-2 border-border">
             {HEADERS.map(h => (
-              <th key={h} className="px-3 py-3 text-left text-muted text-[11px] font-semibold whitespace-nowrap uppercase tracking-wide">
+              <th key={h} className="px-3 py-3 text-left text-muted text-[11px] font-semibold whitespace-nowrap tracking-wide">
                 {h}
               </th>
             ))}
@@ -40,7 +40,7 @@ export default function TradeTable({ trades, onEdit, onDelete }) {
                   ${t.direction.startsWith("多")
                     ? 'bg-green/10 text-green'
                     : 'bg-red/10 text-red'}`}>
-                  {t.direction.startsWith("多") ? "BUY" : "SELL"}
+                  {t.direction.startsWith("多") ? "做多" : "做空"}
                 </span>
               </td>
               <td className="px-3 py-3 text-[11px]">{t.strategy}</td>
@@ -58,10 +58,10 @@ export default function TradeTable({ trades, onEdit, onDelete }) {
               <td className="px-3 py-3 text-[10px]">{t.emotion}</td>
               <td className="px-3 py-3 whitespace-nowrap">
                 <button onClick={() => onEdit(t)} className="text-accent hover:text-accent/80 cursor-pointer mr-2 transition-colors">
-                  Edit
+                  编辑
                 </button>
                 <button onClick={() => onDelete(t.id)} className="text-red hover:text-red/80 cursor-pointer transition-colors">
-                  Del
+                  删除
                 </button>
               </td>
             </tr>
