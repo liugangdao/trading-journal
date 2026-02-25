@@ -39,7 +39,7 @@ app.get('/api/export', (req, res) => {
 const publicDir = join(__dirname, 'public')
 if (existsSync(publicDir)) {
   app.use(express.static(publicDir))
-  app.get('*', (req, res) => {
+  app.get('{*path}', (req, res) => {
     res.sendFile(join(publicDir, 'index.html'))
   })
 }
