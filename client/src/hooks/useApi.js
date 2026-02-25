@@ -24,6 +24,11 @@ export const api = {
   createNote: (data) => request('/notes', { method: 'POST', body: JSON.stringify(data) }),
   deleteNote: (id) => request(`/notes/${id}`, { method: 'DELETE' }),
 
+  // Monthly Notes
+  getMonthlyNotes: () => request('/monthly-notes'),
+  createMonthlyNote: (data) => request('/monthly-notes', { method: 'POST', body: JSON.stringify(data) }),
+  deleteMonthlyNote: (id) => request(`/monthly-notes/${id}`, { method: 'DELETE' }),
+
   // Export
   exportData: async () => {
     const res = await fetch(`${BASE}/export`)

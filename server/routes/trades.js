@@ -17,18 +17,26 @@ router.get('/', (req, res) => {
   }
 })
 
-// POST /api/trades - create trade
+// POST /api/trades - create trade (open or closed)
 router.post('/', (req, res) => {
   try {
-    const { date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes } = req.body
-    if (!date || !pair || !direction || !strategy || !timeframe || entry == null || stop == null || exit_price == null || gross_pnl == null) {
-      return res.status(400).json({ error: 'Missing required fields' })
+    const { date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status } = req.body
+    const tradeStatus = status || 'open'
+    const tradeDate = date || new Date().toISOString().split('T')[0]
+    const tradeStrategy = strategy || '趋势跟踪'
+    const tradeTimeframe = timeframe || 'H4'
+
+    if (!pair || !direction || entry == null || stop == null) {
+      return res.status(400).json({ error: 'Missing required fields: pair, direction, entry, stop' })
+    }
+    if (tradeStatus === 'closed' && (exit_price == null || gross_pnl == null)) {
+      return res.status(400).json({ error: 'Closed trades require exit_price and gross_pnl' })
     }
     const stmt = db.prepare(`
-      INSERT INTO trades (date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO trades (date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
-    const result = stmt.run(date, pair, direction, strategy, timeframe, lots || null, entry, stop, target || null, exit_price, gross_pnl, swap || 0, score || null, emotion || null, notes || null)
+    const result = stmt.run(tradeDate, pair, direction, tradeStrategy, tradeTimeframe, lots || null, entry, stop, target || null, exit_price ?? null, gross_pnl ?? null, swap || 0, score || null, emotion || null, notes || null, tradeStatus)
     const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(result.lastInsertRowid)
     res.status(201).json(trade)
   } catch (err) {
@@ -36,18 +44,30 @@ router.post('/', (req, res) => {
   }
 })
 
-// PUT /api/trades/:id - update trade
+// PUT /api/trades/:id - update trade (close or edit)
 router.put('/:id', (req, res) => {
   try {
-    const { date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes } = req.body
+    const { date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status } = req.body
     const existing = db.prepare('SELECT * FROM trades WHERE id = ?').get(req.params.id)
     if (!existing) return res.status(404).json({ error: 'Trade not found' })
 
+    const tradeStatus = status || existing.status
+    if (tradeStatus === 'closed' && (exit_price == null || gross_pnl == null)) {
+      return res.status(400).json({ error: 'Closed trades require exit_price and gross_pnl' })
+    }
+
     const stmt = db.prepare(`
-      UPDATE trades SET date=?, pair=?, direction=?, strategy=?, timeframe=?, lots=?, entry=?, stop=?, target=?, exit_price=?, gross_pnl=?, swap=?, score=?, emotion=?, notes=?, updated_at=datetime('now')
+      UPDATE trades SET date=?, pair=?, direction=?, strategy=?, timeframe=?, lots=?, entry=?, stop=?, target=?, exit_price=?, gross_pnl=?, swap=?, score=?, emotion=?, notes=?, status=?, updated_at=datetime('now')
       WHERE id=?
     `)
-    stmt.run(date, pair, direction, strategy, timeframe, lots || null, entry, stop, target || null, exit_price, gross_pnl, swap || 0, score || null, emotion || null, notes || null, req.params.id)
+    stmt.run(
+      date ?? existing.date, pair ?? existing.pair, direction ?? existing.direction,
+      strategy ?? existing.strategy, timeframe ?? existing.timeframe, lots || existing.lots,
+      entry ?? existing.entry, stop ?? existing.stop, target || existing.target,
+      exit_price ?? null, gross_pnl ?? null, swap || 0,
+      score || null, emotion || null, notes || null,
+      tradeStatus, req.params.id
+    )
     const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(req.params.id)
     res.json(trade)
   } catch (err) {

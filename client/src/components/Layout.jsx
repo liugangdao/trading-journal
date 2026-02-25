@@ -1,6 +1,6 @@
 import Tab from './ui/Tab'
 
-export default function Layout({ tab, setTab, tradeCount, onExport, children }) {
+export default function Layout({ tab, setTab, tradeCount, openCount, onExport, children }) {
   return (
     <div className="min-h-screen bg-bg text-text font-sans">
       {/* Fixed Header with frosted glass */}
@@ -9,7 +9,7 @@ export default function Layout({ tab, setTab, tradeCount, onExport, children }) 
           <div>
             <h1 className="text-xl font-bold tracking-tight">交易日志</h1>
             <p className="text-xs text-muted mt-0.5">
-              外汇 &middot; 贵金属 &middot; 能源 &nbsp;|&nbsp; 已记录 {tradeCount} 笔交易
+              外汇 &middot; 贵金属 &middot; 能源 &nbsp;|&nbsp; 已平仓 {tradeCount} 笔{openCount > 0 && <> &middot; 持仓中 {openCount} 笔</>}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -17,6 +17,7 @@ export default function Layout({ tab, setTab, tradeCount, onExport, children }) 
               <Tab active={tab === "record"} onClick={() => setTab("record")}>交易记录</Tab>
               <Tab active={tab === "stats"} onClick={() => setTab("stats")}>数据面板</Tab>
               <Tab active={tab === "weekly"} onClick={() => setTab("weekly")}>周度复盘</Tab>
+              <Tab active={tab === "monthly"} onClick={() => setTab("monthly")}>月度复盘</Tab>
             </div>
             <button
               onClick={onExport}

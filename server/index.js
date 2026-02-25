@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import db from './db.js'
 import tradesRouter from './routes/trades.js'
 import notesRouter from './routes/notes.js'
+import monthlyNotesRouter from './routes/monthly-notes.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -17,16 +18,19 @@ app.use(express.json())
 // API routes
 app.use('/api/trades', tradesRouter)
 app.use('/api/notes', notesRouter)
+app.use('/api/monthly-notes', monthlyNotesRouter)
 
 // Export all data as JSON
 app.get('/api/export', (req, res) => {
   try {
     const trades = db.prepare('SELECT * FROM trades ORDER BY date DESC').all()
     const weeklyNotes = db.prepare('SELECT * FROM weekly_notes ORDER BY created_at DESC').all()
+    const monthlyNotes = db.prepare('SELECT * FROM monthly_notes ORDER BY created_at DESC').all()
     const data = {
       exportDate: new Date().toISOString(),
       trades,
-      weeklyNotes
+      weeklyNotes,
+      monthlyNotes
     }
     res.setHeader('Content-Disposition', `attachment; filename="trading-journal-${new Date().toISOString().split('T')[0]}.json"`)
     res.json(data)

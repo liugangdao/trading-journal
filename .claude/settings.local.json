@@ -11,7 +11,12 @@
       "Bash(curl:*)",
       "Bash(echo Trades::*)",
       "Bash(sleep 2:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(cd D:/code/trading-journal && npm run build 2>&1)",
+      "Bash(cd D:/code/trading-journal && rm -f data/journal.db && node server/seed.js 2>&1)",
+      "Bash(cd D:/code/trading-journal && node server/seed.js 2>&1)",
+      "Bash(node:*)",
+      "Bash(find:*)"
     ]
   }
 }
