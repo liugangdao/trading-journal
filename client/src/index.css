@@ -1,1 +1,18 @@
 @import "tailwindcss";
+
+@theme {
+  --color-bg: #0a0e17;
+  --color-card: #111827;
+  --color-border: #1e293b;
+  --color-accent: #3b82f6;
+  --color-green: #10b981;
+  --color-red: #ef4444;
+  --color-gold: #f59e0b;
+  --color-purple: #8b5cf6;
+  --color-text: #e2e8f0;
+  --color-muted: #64748b;
+  --color-input: #1e293b;
+
+  --font-sans: 'Inter', 'SF Pro', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
