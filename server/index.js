@@ -3,6 +3,7 @@ import cors from 'cors'
 import { existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import db from './db.js'
 import tradesRouter from './routes/trades.js'
 import notesRouter from './routes/notes.js'
 
@@ -16,6 +17,23 @@ app.use(express.json())
 // API routes
 app.use('/api/trades', tradesRouter)
 app.use('/api/notes', notesRouter)
+
+// Export all data as JSON
+app.get('/api/export', (req, res) => {
+  try {
+    const trades = db.prepare('SELECT * FROM trades ORDER BY date DESC').all()
+    const weeklyNotes = db.prepare('SELECT * FROM weekly_notes ORDER BY created_at DESC').all()
+    const data = {
+      exportDate: new Date().toISOString(),
+      trades,
+      weeklyNotes
+    }
+    res.setHeader('Content-Disposition', `attachment; filename="trading-journal-${new Date().toISOString().split('T')[0]}.json"`)
+    res.json(data)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
 
 // Serve frontend in production
 const publicDir = join(__dirname, 'public')
