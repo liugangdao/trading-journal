@@ -1,0 +1,141 @@
+import { useMemo } from 'react'
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import KpiCard from './ui/KpiCard'
+import { calcStats } from '../lib/calc'
+
+const CHART_COLORS = ["#3b82f6","#10b981","#ef4444","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#84cc16"]
+const C = { card: '#111827', border: '#1e293b', muted: '#64748b', accent: '#3b82f6', green: '#10b981', red: '#ef4444', gold: '#f59e0b' }
+
+const tooltipStyle = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 }
+
+export default function Dashboard({ trades }) {
+  const stats = useMemo(() => calcStats(trades), [trades])
+
+  if (!stats) {
+    return (
+      <div className="text-center py-20 text-muted">
+        <div className="text-4xl mb-3 opacity-50">No data</div>
+        <p className="text-sm">Statistics will appear after you record trades</p>
+      </div>
+    )
+  }
+
+  const goodScoreRate = Math.round(
+    stats.computed.filter(t => t.score?.startsWith("A") || t.score?.startsWith("B")).length / stats.computed.length * 100
+  )
+
+  return (
+    <div className="space-y-5">
+      {/* KPI Row */}
+      <div className="flex gap-3 flex-wrap">
+        <KpiCard label="Total Trades" value={stats.total} />
+        <KpiCard label="Win Rate" value={stats.winRate + "%"} color={stats.winRate >= 50 ? C.green : C.red} />
+        <KpiCard label="Net PnL" value={"$" + stats.totalNet.toFixed(0)} color={stats.totalNet >= 0 ? C.green : C.red} />
+        <KpiCard label="Profit Factor" value={stats.profitFactor} color={stats.profitFactor >= 1.5 ? C.green : C.gold} />
+        <KpiCard label="Avg R" value={stats.avgR + "R"} color={stats.avgR >= 0 ? C.green : C.red} />
+        <KpiCard label="Execution %" value={goodScoreRate + "%"} />
+      </div>
+
+      {/* Core + Cost cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card title="Core Metrics">
+          {[["Wins", stats.wins], ["Losses", stats.losses], ["Avg Win", "$" + stats.avgWin.toFixed(2)], ["Avg Loss", "$" + stats.avgLoss.toFixed(2)]].map(([k, v]) => (
+            <StatRow key={k} label={k} value={v} />
+          ))}
+        </Card>
+        <Card title="Cost Analysis">
+          {[["Gross PnL", "$" + stats.totalGross.toFixed(2)], ["Spread Cost", "-$" + Math.abs(stats.totalSpread).toFixed(2)], ["Swap", (stats.totalSwap >= 0 ? "+$" : "-$") + Math.abs(stats.totalSwap).toFixed(2)], ["Net PnL", "$" + stats.totalNet.toFixed(2)]].map(([k, v]) => (
+            <StatRow key={k} label={k} value={v} />
+          ))}
+        </Card>
+      </div>
+
+      {/* Cumulative PnL */}
+      {stats.cumData.length > 1 && (
+        <Card title="Cumulative Net PnL">
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={stats.cumData}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+              <XAxis dataKey="idx" stroke={C.muted} fontSize={10} />
+              <YAxis stroke={C.muted} fontSize={10} tickFormatter={v => "$" + v} />
+              <Tooltip contentStyle={tooltipStyle} formatter={v => ["$" + v, "Cumulative PnL"]} />
+              <Line type="monotone" dataKey="pnl" stroke={C.accent} strokeWidth={2.5} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card title="PnL by Pair">
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={stats.byPair} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+              <XAxis type="number" stroke={C.muted} fontSize={10} tickFormatter={v => "$" + v} />
+              <YAxis type="category" dataKey="name" stroke={C.muted} fontSize={10} width={65} />
+              <Tooltip contentStyle={tooltipStyle} formatter={v => "$" + v} />
+              <Bar dataKey="pnl" radius={[0, 4, 4, 0]}>
+                {stats.byPair.map((e, i) => <Cell key={i} fill={e.pnl >= 0 ? C.green : C.red} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card title="Emotion Distribution">
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie data={stats.byEmo} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={70}
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                {stats.byEmo.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={tooltipStyle} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      {/* Detail Tables */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {[["Strategy", stats.byStrat], ["Weekday", stats.byDay], ["Timeframe", stats.byTf], ["Emotion vs PnL", stats.byEmo]].map(([title, data]) => (
+          <Card key={title} title={title}>
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr>{["Name","Count","Win%","PnL","Avg R"].map(h => (
+                  <th key={h} className="px-2 py-1.5 text-left text-muted font-semibold border-b border-border text-[10px] uppercase">{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {data.map(d => (
+                  <tr key={d.name} className="border-b border-border/30">
+                    <td className="px-2 py-1.5 font-semibold">{d.name}</td>
+                    <td className="px-2 py-1.5">{d.count}</td>
+                    <td className={`px-2 py-1.5 ${d.winRate >= 50 ? 'text-green' : 'text-red'}`}>{d.winRate}%</td>
+                    <td className={`px-2 py-1.5 font-mono ${d.pnl >= 0 ? 'text-green' : 'text-red'}`}>${d.pnl}</td>
+                    <td className="px-2 py-1.5 font-mono">{d.avgR}R</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Card({ title, children }) {
+  return (
+    <div className="bg-card border border-border rounded-xl p-4">
+      <h4 className="text-sm font-bold mb-3">{title}</h4>
+      {children}
+    </div>
+  )
+}
+
+function StatRow({ label, value }) {
+  return (
+    <div className="flex justify-between py-1.5 border-b border-border/50 text-sm">
+      <span className="text-muted">{label}</span>
+      <span className="font-mono font-semibold">{value}</span>
+    </div>
+  )
+}
