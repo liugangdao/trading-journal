@@ -23,6 +23,48 @@ function SortHeader({ col, label, sortKey, sortOrder, onSort }) {
   )
 }
 
+function TradeCard({ trade: t, index, onEdit, onDelete }) {
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <div className="bg-card border border-border rounded-xl p-3">
+      <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpanded(!expanded)}>
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-sm">{t.pair}</span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${t.direction.startsWith("多") ? 'bg-green/10 text-green' : 'bg-red/10 text-red'}`}>
+            {t.direction.startsWith("多") ? "多" : "空"}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`font-mono font-bold text-sm ${t.rMultiple >= 0 ? 'text-green' : 'text-red'}`}>
+            {t.rMultiple > 0 ? "+" : ""}{t.rMultiple}R
+          </span>
+          <span className={`font-mono font-bold text-sm ${t.netPnl >= 0 ? 'text-green' : 'text-red'}`}>
+            ${t.netPnl.toFixed(2)}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-1 text-[10px] text-muted">
+        <span>{t.date} · {t.strategy} · {t.timeframe}</span>
+        <span>{t.score?.split("-")[0]}</span>
+      </div>
+      {expanded && (
+        <div className="mt-3 pt-3 border-t border-border/50">
+          <div className="grid grid-cols-3 gap-2 text-xs mb-3">
+            <div><span className="text-muted">手数</span> <span className="font-mono">{t.lots}</span></div>
+            <div><span className="text-muted">入场</span> <span className="font-mono">{t.entry}</span></div>
+            <div><span className="text-muted">出场</span> <span className="font-mono">{t.exit_price}</span></div>
+          </div>
+          {t.notes && <p className="text-xs text-muted mb-3">{t.notes}</p>}
+          <div className="flex gap-2">
+            <button onClick={(e) => { e.stopPropagation(); onEdit(t) }} className="text-accent text-xs cursor-pointer">编辑</button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(t.id) }} className="text-red text-xs cursor-pointer">删除</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) {
   const [sortKey, setSortKey] = useState('date')
   const [sortOrder, setSortOrder] = useState('desc')
@@ -70,7 +112,14 @@ export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) 
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-xl border border-border">
+      {/* Mobile card view */}
+      <div className="sm:hidden space-y-2">
+        {paged.map((t, i) => (
+          <TradeCard key={t.id} trade={t} index={(page - 1) * PAGE_SIZE + i + 1} onEdit={onEdit} onDelete={onDelete} />
+        ))}
+      </div>
+
+      <div className="hidden sm:block overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b-2 border-border">
