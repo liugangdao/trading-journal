@@ -16,6 +16,8 @@ COPY server ./server
 # Copy built frontend into server/public
 COPY --from=builder /app/server/public ./server/public
 
+RUN mkdir -p /app/data
+
 EXPOSE 3001
 
 CMD ["node", "server/index.js"]
