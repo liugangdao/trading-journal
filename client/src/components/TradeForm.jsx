@@ -54,14 +54,14 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, onSu
   const isRequired = (field) => error && requiredFields.includes(field) && !form[field]
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+    <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 mb-6">
       <h3 className="text-base font-bold mb-5">{title}</h3>
 
       {/* Close mode: read-only summary of open position */}
       {isClose && (
         <div className="mb-5 p-4 bg-bg rounded-xl border border-border">
           <div className="text-[11px] text-muted mb-2 font-medium">开仓信息</div>
-          <div className="flex gap-5 flex-wrap text-sm">
+          <div className="flex gap-2 sm:gap-5 flex-wrap text-sm">
             <span><span className="text-muted">品种:</span> <b>{form.pair}</b></span>
             <span><span className="text-muted">方向:</span> <b>{form.direction}</b></span>
             <span><span className="text-muted">入场价:</span> <b>{form.entry}</b></span>
@@ -72,7 +72,7 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, onSu
         </div>
       )}
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
         {/* Open and Edit mode fields */}
         {!isClose && (
           <>
@@ -115,7 +115,7 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, onSu
 
       {/* Auto-calc preview */}
       {preview && (
-        <div className="mt-4 p-3 bg-bg rounded-lg flex gap-5 flex-wrap text-xs font-mono">
+        <div className="mt-4 p-3 bg-bg rounded-lg flex gap-2 sm:gap-5 flex-wrap text-xs font-mono">
           <span className="text-muted">自动计算:</span>
           <span>止损点数: <b>{preview.stopPips.toFixed(5)}</b></span>
           <span>盈亏点数: <b className={preview.pnlPips >= 0 ? 'text-green' : 'text-red'}>{preview.pnlPips.toFixed(5)}</b></span>
