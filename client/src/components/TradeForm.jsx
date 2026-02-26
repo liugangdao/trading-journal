@@ -12,7 +12,7 @@ export function emptyTrade(pairs) {
     date: today(), pair: pairList[0], direction: "多(Buy)",
     strategy: "趋势跟踪", timeframe: "H4", lots: "", entry: "", stop: "", target: "",
     exit_price: "", gross_pnl: "", swap: "0", score: "B-基本执行", emotion: "冷静理性", notes: "",
-    status: "open"
+    status: "closed"
   }
 }
 
@@ -20,16 +20,18 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, onSu
   const pairOptions = pairs && pairs.length > 0 ? pairs : DEFAULT_PAIRS
   const [form, setForm] = useState(initial || emptyTrade())
   const [error, setError] = useState("")
+  const [openOnly, setOpenOnly] = useState(false)
   const uf = (k) => (v) => { setForm(f => ({ ...f, [k]: v })); setError("") }
 
-  const isOpen = mode === "open"
   const isClose = mode === "close"
+  const isNew = mode === "new"
+  const hideExit = isNew && openOnly
 
-  const REQUIRED_OPEN = ["entry", "stop"]
   const REQUIRED_CLOSE = ["exit_price", "gross_pnl"]
-  const REQUIRED_EDIT = ["entry", "stop", "exit_price", "gross_pnl"]
+  const REQUIRED_FULL = ["entry", "stop", "exit_price", "gross_pnl"]
+  const REQUIRED_OPEN_ONLY = ["entry", "stop"]
 
-  const requiredFields = isOpen ? REQUIRED_OPEN : isClose ? REQUIRED_CLOSE : REQUIRED_EDIT
+  const requiredFields = isClose ? REQUIRED_CLOSE : hideExit ? REQUIRED_OPEN_ONLY : REQUIRED_FULL
 
   const handleSubmit = () => {
     const missing = requiredFields.filter(k => !form[k] && form[k] !== 0)
@@ -38,16 +40,16 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, onSu
       return
     }
     const payload = { ...form }
-    if (isOpen) payload.status = "open"
+    if (hideExit) payload.status = "open"
     if (isClose) payload.status = "closed"
     onSubmit(payload)
   }
 
-  const showPreview = !isOpen && form.entry && form.stop && form.exit_price && form.gross_pnl
+  const showPreview = !hideExit && form.entry && form.stop && form.exit_price && form.gross_pnl
   const preview = showPreview ? calcTrade(form) : null
 
-  const title = isOpen ? "开仓记录" : isClose ? "平仓记录" : "编辑交易"
-  const submitText = isOpen ? "确认开仓" : isClose ? "确认平仓" : "保存修改"
+  const title = isClose ? "平仓记录" : editing ? "编辑交易" : "记录交易"
+  const submitText = isClose ? "确认平仓" : editing ? "保存修改" : hideExit ? "记录开仓" : "记录交易"
 
   const isRequired = (field) => error && requiredFields.includes(field) && !form[field]
 
@@ -86,8 +88,8 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, onSu
           </>
         )}
 
-        {/* Close mode and Edit mode exit fields */}
-        {!isOpen && (
+        {/* Exit fields: hidden in open-only mode */}
+        {!hideExit && (
           <>
             <Field label="出场价 *" required={isRequired("exit_price")}><Input value={form.exit_price} onChange={uf("exit_price")} placeholder="1.03720" /></Field>
             <Field label="盈亏 (USD) *" required={isRequired("gross_pnl")}><Input value={form.gross_pnl} onChange={uf("gross_pnl")} placeholder="235" /></Field>
@@ -105,7 +107,7 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, onSu
         <textarea
           value={form.notes}
           onChange={e => uf("notes")(e.target.value)}
-          placeholder={isOpen ? "入场逻辑、交易计划..." : isClose ? "出场原因、复盘总结..." : "入场逻辑、仓位管理、出场原因..."}
+          placeholder={hideExit ? "入场逻辑、交易计划..." : isClose ? "出场原因、复盘总结..." : "入场逻辑、仓位管理、出场原因..."}
           className="w-full bg-input text-text border border-border rounded-lg px-3 py-2 text-sm min-h-[60px] resize-y outline-none
             focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all duration-200 font-sans"
         />
@@ -121,6 +123,22 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, onSu
           <span>点差: <b>${preview.spread}</b></span>
           <span>净盈亏: <b className={preview.netPnl >= 0 ? 'text-green' : 'text-red'}>${preview.netPnl}</b></span>
         </div>
+      )}
+
+      {/* Open-only toggle: only in new trade mode */}
+      {isNew && (
+        <label className="flex items-center gap-2 mt-4 cursor-pointer select-none">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={openOnly}
+            onClick={() => setOpenOnly(v => !v)}
+            className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${openOnly ? 'bg-accent' : 'bg-border'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${openOnly ? 'translate-x-4' : ''}`} />
+          </button>
+          <span className="text-sm text-muted">仅开仓（稍后平仓）</span>
+        </label>
       )}
 
       {error && (

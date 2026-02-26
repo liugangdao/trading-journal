@@ -136,7 +136,7 @@ export default function App() {
   }, [])
 
   // Determine form mode and initial data
-  const formMode = closingId ? "close" : editing ? "edit" : "open"
+  const formMode = closingId ? "close" : editing ? "edit" : "new"
   const formInitial = closingId
     ? trades.find(t => t.id === closingId)
     : editing
@@ -167,7 +167,7 @@ export default function App() {
               onClick={() => { setEditing(null); setClosingId(null); setShowForm(true) }}
               className="bg-accent text-white px-6 py-3 rounded-xl text-sm font-semibold cursor-pointer
                 hover:brightness-110 transition-all duration-200 mb-5">
-              + 开仓
+              + 记录交易
             </button>
           )}
 
