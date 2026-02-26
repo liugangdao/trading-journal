@@ -61,7 +61,7 @@ export function calcStats(trades, spreadCostMap) {
   }))
 
   let cumPnl = 0
-  const cumData = computed.map((t, i) => { cumPnl += t.netPnl; return { idx: i + 1, pnl: Math.round(cumPnl * 100) / 100 } })
+  const cumData = computed.map((t, i) => { cumPnl += t.netPnl; return { idx: i + 1, date: t.date, pnl: Math.round(cumPnl * 100) / 100 } })
 
   return {
     total: computed.length, wins: wins.length, losses: losses.length,

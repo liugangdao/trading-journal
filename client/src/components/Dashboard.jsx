@@ -60,7 +60,7 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={stats.cumData}>
               <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-              <XAxis dataKey="idx" stroke={C.muted} fontSize={10} />
+              <XAxis dataKey="date" stroke={C.muted} fontSize={10} />
               <YAxis stroke={C.muted} fontSize={10} tickFormatter={v => "$" + v} />
               <Tooltip contentStyle={tooltipStyle} formatter={v => ["$" + v, "累计盈亏"]} />
               <Line type="monotone" dataKey="pnl" stroke={C.accent} strokeWidth={2.5} dot={false} />
