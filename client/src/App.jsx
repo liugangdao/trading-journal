@@ -8,6 +8,7 @@ import MonthlyNotes from './components/MonthlyNotes'
 import OpenPositions from './components/OpenPositions'
 import ExportBar from './components/ExportBar'
 import Settings from './components/Settings'
+import PwaPrompt from './components/PwaPrompt'
 import { api } from './hooks/useApi'
 import { useTheme } from './hooks/useTheme'
 
@@ -197,6 +198,7 @@ export default function App() {
 
       {/* Settings Tab */}
       {tab === "settings" && <Settings pairs={pairs} onPairsChange={setPairs} />}
+      <PwaPrompt />
     </Layout>
   )
 }
