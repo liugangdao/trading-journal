@@ -7,6 +7,7 @@ import db from './db.js'
 import tradesRouter from './routes/trades.js'
 import notesRouter from './routes/notes.js'
 import monthlyNotesRouter from './routes/monthly-notes.js'
+import pairsRouter from './routes/pairs.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -19,15 +20,31 @@ app.use(express.json())
 app.use('/api/trades', tradesRouter)
 app.use('/api/notes', notesRouter)
 app.use('/api/monthly-notes', monthlyNotesRouter)
+app.use('/api/pairs', pairsRouter)
 
-// Export all data as JSON
+// Export data as JSON with optional date range
 app.get('/api/export', (req, res) => {
   try {
-    const trades = db.prepare('SELECT * FROM trades ORDER BY date DESC').all()
+    const { from, to } = req.query
+    let tradeQuery = 'SELECT * FROM trades'
+    const params = []
+    if (from && to) {
+      tradeQuery += ' WHERE date >= ? AND date <= ?'
+      params.push(from, to)
+    } else if (from) {
+      tradeQuery += ' WHERE date >= ?'
+      params.push(from)
+    } else if (to) {
+      tradeQuery += ' WHERE date <= ?'
+      params.push(to)
+    }
+    tradeQuery += ' ORDER BY date DESC'
+    const trades = db.prepare(tradeQuery).all(...params)
     const weeklyNotes = db.prepare('SELECT * FROM weekly_notes ORDER BY created_at DESC').all()
     const monthlyNotes = db.prepare('SELECT * FROM monthly_notes ORDER BY created_at DESC').all()
     const data = {
       exportDate: new Date().toISOString(),
+      dateRange: { from: from || null, to: to || null },
       trades,
       weeklyNotes,
       monthlyNotes

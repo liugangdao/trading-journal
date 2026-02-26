@@ -2,7 +2,8 @@ import { SPREAD_COST, WEEKDAYS } from './constants'
 
 const weekday = (d) => WEEKDAYS[new Date(d).getDay()]
 
-export function calcTrade(t) {
+export function calcTrade(t, spreadCostMap) {
+  const costMap = spreadCostMap || SPREAD_COST
   const entry = parseFloat(t.entry) || 0
   const stop = parseFloat(t.stop) || 0
   const exitPrice = parseFloat(t.exit_price) || 0
@@ -11,10 +12,10 @@ export function calcTrade(t) {
   const swap = parseFloat(t.swap) || 0
   const isBuy = t.direction.startsWith("多")
 
-  const stopPips = Math.abs(entry - stop)
+  const stopPips = stop > 0 ? Math.abs(entry - stop) : 0
   const pnlPips = isBuy ? exitPrice - entry : entry - exitPrice
   const rMultiple = stopPips > 0 ? pnlPips / stopPips : 0
-  const spread = (SPREAD_COST[t.pair] || 5) * lots
+  const spread = (costMap[t.pair] || 5) * lots
   const netPnl = gross - spread + swap
 
   return {
@@ -28,8 +29,8 @@ export function calcTrade(t) {
   }
 }
 
-export function calcStats(trades) {
-  const computed = trades.map(calcTrade)
+export function calcStats(trades, spreadCostMap) {
+  const computed = trades.map(t => calcTrade(t, spreadCostMap))
   if (computed.length === 0) return null
 
   const wins = computed.filter(t => t.netPnl > 0)

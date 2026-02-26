@@ -4,12 +4,16 @@ import KpiCard from './ui/KpiCard'
 import { calcStats } from '../lib/calc'
 
 const CHART_COLORS = ["#3b82f6","#10b981","#ef4444","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#84cc16"]
-const C = { card: '#111827', border: '#1e293b', muted: '#64748b', accent: '#3b82f6', green: '#10b981', red: '#ef4444', gold: '#f59e0b' }
 
-const tooltipStyle = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 }
+const THEME_COLORS = {
+  light: { card: '#ffffff', border: '#e2e8f0', muted: '#94a3b8', accent: '#3b82f6', green: '#16a34a', red: '#dc2626', gold: '#d97706' },
+  dark:  { card: '#111827', border: '#1e293b', muted: '#64748b', accent: '#3b82f6', green: '#10b981', red: '#ef4444', gold: '#f59e0b' },
+}
 
-export default function Dashboard({ trades }) {
-  const stats = useMemo(() => calcStats(trades), [trades])
+export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
+  const stats = useMemo(() => calcStats(trades, spreadCostMap), [trades, spreadCostMap])
+  const C = THEME_COLORS[theme] || THEME_COLORS.dark
+  const tooltipStyle = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 }
 
   if (!stats) {
     return (
@@ -25,7 +29,7 @@ export default function Dashboard({ trades }) {
   )
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* KPI Row */}
       <div className="flex gap-3 flex-wrap">
         <KpiCard label="总交易数" value={stats.total} />
@@ -124,7 +128,7 @@ export default function Dashboard({ trades }) {
 
 function Card({ title, children }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
+    <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
       <h4 className="text-sm font-bold mb-3">{title}</h4>
       {children}
     </div>

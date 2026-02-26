@@ -6,26 +6,37 @@ import Dashboard from './components/Dashboard'
 import WeeklyNotes from './components/WeeklyNotes'
 import MonthlyNotes from './components/MonthlyNotes'
 import OpenPositions from './components/OpenPositions'
+import ExportBar from './components/ExportBar'
+import Settings from './components/Settings'
 import { api } from './hooks/useApi'
+import { useTheme } from './hooks/useTheme'
 
 export default function App() {
   const [trades, setTrades] = useState([])
   const [notes, setNotes] = useState([])
   const [monthlyNotes, setMonthlyNotes] = useState([])
-  const [tab, setTab] = useState("record")
+  const [tab, setTab] = useState("stats")
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
   const [closingId, setClosingId] = useState(null)
+  const [pairs, setPairs] = useState([])
   const [loading, setLoading] = useState(true)
+  const { theme, toggleTheme } = useTheme()
 
   // Derived data
   const openTrades = useMemo(() => trades.filter(t => t.status === 'open'), [trades])
   const closedTrades = useMemo(() => trades.filter(t => t.status === 'closed'), [trades])
+  const spreadCostMap = useMemo(() => {
+    const map = {}
+    pairs.forEach(p => { map[p.name] = p.spread_cost })
+    return map
+  }, [pairs])
+  const pairNames = useMemo(() => pairs.map(p => p.name), [pairs])
 
   // Load data on mount
   useEffect(() => {
-    Promise.all([api.getTrades(), api.getNotes(), api.getMonthlyNotes()])
-      .then(([t, n, mn]) => { setTrades(t); setNotes(n); setMonthlyNotes(mn) })
+    Promise.all([api.getTrades(), api.getNotes(), api.getMonthlyNotes(), api.getPairs()])
+      .then(([t, n, mn, p]) => { setTrades(t); setNotes(n); setMonthlyNotes(mn); setPairs(p) })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
@@ -130,7 +141,7 @@ export default function App() {
     ? trades.find(t => t.id === closingId)
     : editing
       ? trades.find(t => t.id === editing)
-      : emptyTrade()
+      : emptyTrade(pairNames)
 
   if (loading) {
     return (
@@ -141,10 +152,13 @@ export default function App() {
   }
 
   return (
-    <Layout tab={tab} setTab={setTab} tradeCount={closedTrades.length} openCount={openTrades.length} onExport={api.exportData}>
+    <Layout tab={tab} setTab={setTab} tradeCount={closedTrades.length} openCount={openTrades.length} theme={theme} onToggleTheme={toggleTheme}>
       {/* Record Tab */}
       {tab === "record" && (
         <div>
+          {/* Export */}
+          <ExportBar />
+
           {/* Open Positions */}
           <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={handleDeleteTrade} />
 
@@ -162,23 +176,27 @@ export default function App() {
               initial={formInitial}
               editing={!!editing}
               mode={formMode}
+              pairs={pairNames}
               onSubmit={closingId ? handleCloseSubmit : handleAddTrade}
               onCancel={handleCancelForm}
             />
           )}
 
-          <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} />
+          <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} spreadCostMap={spreadCostMap} />
         </div>
       )}
 
       {/* Stats Tab */}
-      {tab === "stats" && <Dashboard trades={closedTrades} />}
+      {tab === "stats" && <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />}
 
       {/* Weekly Tab */}
       {tab === "weekly" && <WeeklyNotes notes={notes} onAdd={handleAddNote} onDelete={handleDeleteNote} />}
 
       {/* Monthly Tab */}
       {tab === "monthly" && <MonthlyNotes notes={monthlyNotes} onAdd={handleAddMonthlyNote} onDelete={handleDeleteMonthlyNote} />}
+
+      {/* Settings Tab */}
+      {tab === "settings" && <Settings pairs={pairs} onPairsChange={setPairs} />}
     </Layout>
   )
 }

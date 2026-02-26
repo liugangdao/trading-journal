@@ -53,7 +53,34 @@ db.exec(`
     plan TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS pairs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    spread_cost REAL DEFAULT 5,
+    sort_order INTEGER DEFAULT 0
+  );
 `)
+
+// Seed pairs table if empty
+const pairCount = db.prepare('SELECT COUNT(*) as cnt FROM pairs').get().cnt
+if (pairCount === 0) {
+  const defaultPairs = {
+    "EUR/USD": 3.5, "GBP/USD": 4, "USD/JPY": 3, "AUD/USD": 3.5,
+    "NZD/USD": 4.5, "USD/CAD": 4, "USD/CHF": 4, "EUR/GBP": 4.5,
+    "EUR/JPY": 5, "GBP/JPY": 6, "AUD/JPY": 5, "NZD/JPY": 5,
+    "CAD/JPY": 5, "AUD/CAD": 4, "EUR/AUD": 5, "USD/CNH": 8,
+    "XAU/USD": 12, "XAG/USD": 10, "USOil": 5, "UKOil": 6,
+    "NGAS": 8, "Copper": 5, "BABA.hk": 1
+  }
+  const insert = db.prepare('INSERT INTO pairs (name, spread_cost, sort_order) VALUES (?, ?, ?)')
+  const seedPairs = db.transaction(() => {
+    Object.entries(defaultPairs).forEach(([name, cost], i) => {
+      insert.run(name, cost, i)
+    })
+  })
+  seedPairs()
+}
 
 // Migration: add status column if missing (SQLite cannot ALTER COLUMN, so recreate table)
 const columns = db.prepare("PRAGMA table_info(trades)").all()

@@ -1,21 +1,23 @@
 import { useState } from 'react'
 import Input from './ui/Input'
 import Select from './ui/Select'
-import { PAIRS, DIRECTIONS, STRATEGIES, TIMEFRAMES, SCORES, EMOTIONS } from '../lib/constants'
+import { PAIRS as DEFAULT_PAIRS, DIRECTIONS, STRATEGIES, TIMEFRAMES, SCORES, EMOTIONS } from '../lib/constants'
 import { calcTrade } from '../lib/calc'
 
 const today = () => new Date().toISOString().split("T")[0]
 
-export function emptyTrade() {
+export function emptyTrade(pairs) {
+  const pairList = pairs && pairs.length > 0 ? pairs : DEFAULT_PAIRS
   return {
-    date: today(), pair: "EUR/USD", direction: "多(Buy)",
+    date: today(), pair: pairList[0], direction: "多(Buy)",
     strategy: "趋势跟踪", timeframe: "H4", lots: "", entry: "", stop: "", target: "",
     exit_price: "", gross_pnl: "", swap: "0", score: "B-基本执行", emotion: "冷静理性", notes: "",
     status: "open"
   }
 }
 
-export default function TradeForm({ initial, editing, mode = "edit", onSubmit, onCancel }) {
+export default function TradeForm({ initial, editing, mode = "edit", pairs, onSubmit, onCancel }) {
+  const pairOptions = pairs && pairs.length > 0 ? pairs : DEFAULT_PAIRS
   const [form, setForm] = useState(initial || emptyTrade())
   const [error, setError] = useState("")
   const uf = (k) => (v) => { setForm(f => ({ ...f, [k]: v })); setError("") }
@@ -73,7 +75,7 @@ export default function TradeForm({ initial, editing, mode = "edit", onSubmit, o
         {!isClose && (
           <>
             <Field label="日期"><Input type="date" value={form.date} onChange={uf("date")} /></Field>
-            <Field label="品种"><Select value={form.pair} onChange={uf("pair")} options={PAIRS} /></Field>
+            <Field label="品种"><Select value={form.pair} onChange={uf("pair")} options={pairOptions} /></Field>
             <Field label="方向"><Select value={form.direction} onChange={uf("direction")} options={DIRECTIONS} /></Field>
             <Field label="策略"><Select value={form.strategy} onChange={uf("strategy")} options={STRATEGIES} /></Field>
             <Field label="周期"><Select value={form.timeframe} onChange={uf("timeframe")} options={TIMEFRAMES} /></Field>

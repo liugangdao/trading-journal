@@ -29,9 +29,19 @@ export const api = {
   createMonthlyNote: (data) => request('/monthly-notes', { method: 'POST', body: JSON.stringify(data) }),
   deleteMonthlyNote: (id) => request(`/monthly-notes/${id}`, { method: 'DELETE' }),
 
+  // Pairs
+  getPairs: () => request('/pairs'),
+  createPair: (data) => request('/pairs', { method: 'POST', body: JSON.stringify(data) }),
+  updatePair: (id, data) => request(`/pairs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePair: (id) => request(`/pairs/${id}`, { method: 'DELETE' }),
+
   // Export
-  exportData: async () => {
-    const res = await fetch(`${BASE}/export`)
+  exportData: async (from, to) => {
+    const params = new URLSearchParams()
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+    const qs = params.toString()
+    const res = await fetch(`${BASE}/export${qs ? '?' + qs : ''}`)
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
