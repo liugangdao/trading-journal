@@ -31,7 +31,7 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
   return (
     <div className="space-y-6">
       {/* KPI Row */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:flex gap-2 sm:gap-3">
         <KpiCard label="总交易数" value={stats.total} />
         <KpiCard label="胜率" value={stats.winRate + "%"} color={stats.winRate >= 50 ? C.green : C.red} />
         <KpiCard label="净盈亏" value={"$" + stats.totalNet.toFixed(0)} color={stats.totalNet >= 0 ? C.green : C.red} />
@@ -128,7 +128,7 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
 
 function Card({ title, children }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+    <div className="bg-card border border-border rounded-xl p-3 sm:p-5 shadow-sm">
       <h4 className="text-sm font-bold mb-3">{title}</h4>
       {children}
     </div>

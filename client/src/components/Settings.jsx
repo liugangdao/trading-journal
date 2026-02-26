@@ -58,7 +58,7 @@ export default function Settings({ pairs, onPairsChange }) {
       {error && <div className="mb-4 text-red text-sm">{error}</div>}
 
       {/* Add form */}
-      <div className="flex gap-3 mb-5 items-end">
+      <div className="flex flex-col sm:flex-row gap-3 mb-5 sm:items-end">
         <div>
           <div className="text-[11px] text-muted mb-1">品种名称</div>
           <input
@@ -66,7 +66,7 @@ export default function Settings({ pairs, onPairsChange }) {
             onChange={e => setName(e.target.value)}
             placeholder="如 EUR/USD"
             className="bg-input text-text border border-border rounded-lg px-3 py-2 text-sm outline-none
-              focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all duration-200 w-40"
+              focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all duration-200 w-full sm:w-40"
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
           />
         </div>
@@ -77,7 +77,7 @@ export default function Settings({ pairs, onPairsChange }) {
             onChange={e => setSpreadCost(e.target.value)}
             placeholder="5"
             className="bg-input text-text border border-border rounded-lg px-3 py-2 text-sm outline-none
-              focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all duration-200 w-24"
+              focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all duration-200 w-full sm:w-24"
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
           />
         </div>

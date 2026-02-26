@@ -10,7 +10,7 @@ export default function ExportBar() {
   }
 
   return (
-    <div className="flex items-end gap-3 flex-wrap mb-5">
+    <div className="flex items-end gap-2 sm:gap-3 flex-wrap mb-5">
       <div>
         <div className="text-[11px] text-muted mb-1">起始日期</div>
         <input
