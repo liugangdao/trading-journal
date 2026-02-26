@@ -33,15 +33,15 @@ export default function Layout({ tab, setTab, tradeCount, openCount, theme, onTo
     <div className="min-h-screen bg-bg text-text font-sans">
       {/* Fixed Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-header-bg border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between flex-wrap gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">交易日志</h1>
-            <p className="text-xs text-muted mt-0.5">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight">交易日志</h1>
+            <p className="text-[10px] sm:text-xs text-muted mt-0.5">
               外汇 &middot; 贵金属 &middot; 能源 &nbsp;|&nbsp; 已平仓 {tradeCount} 笔{openCount > 0 && <> &middot; 持仓中 {openCount} 笔</>}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1 bg-card/80 rounded-xl p-1">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex gap-1 bg-card/80 rounded-xl p-1 overflow-x-auto">
               <Tab active={tab === "stats"} onClick={() => setTab("stats")}>数据面板</Tab>
               <Tab active={tab === "record"} onClick={() => setTab("record")}>交易记录</Tab>
               <Tab active={tab === "weekly"} onClick={() => setTab("weekly")}>周度复盘</Tab>
@@ -54,7 +54,7 @@ export default function Layout({ tab, setTab, tradeCount, openCount, theme, onTo
       </header>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
         {children}
       </main>
     </div>
