@@ -35,6 +35,24 @@ export const api = {
   updatePair: (id, data) => request(`/pairs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deletePair: (id) => request(`/pairs/${id}`, { method: 'DELETE' }),
 
+  // Policies
+  getPolicies: (category) => {
+    const qs = category ? `?category=${category}` : ''
+    return request(`/policies${qs}`)
+  },
+  createPolicy: (data) => request('/policies', { method: 'POST', body: JSON.stringify(data) }),
+  updatePolicy: (id, data) => request(`/policies/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePolicy: (id) => request(`/policies/${id}`, { method: 'DELETE' }),
+  togglePolicy: (id) => request(`/policies/${id}/toggle`, { method: 'PUT' }),
+
+  // Violations
+  getTradeViolations: (tradeId) => request(`/trades/${tradeId}/violations`),
+  updateTradeViolations: (tradeId, policyIds) => request(`/trades/${tradeId}/violations`, {
+    method: 'PUT',
+    body: JSON.stringify({ policy_ids: policyIds }),
+  }),
+  getViolationStats: () => request('/violations/stats'),
+
   // Export
   exportData: async (from, to) => {
     const params = new URLSearchParams()

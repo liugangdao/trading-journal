@@ -46,6 +46,7 @@ export default function Layout({ tab, setTab, tradeCount, openCount, theme, onTo
               <Tab active={tab === "record"} onClick={() => setTab("record")}>交易记录</Tab>
               <Tab active={tab === "weekly"} onClick={() => setTab("weekly")}>周度复盘</Tab>
               <Tab active={tab === "monthly"} onClick={() => setTab("monthly")}>月度复盘</Tab>
+              <Tab active={tab === "policy"} onClick={() => setTab("policy")}>交易政策</Tab>
               <Tab active={tab === "settings"} onClick={() => setTab("settings")}>设置</Tab>
             </div>
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />

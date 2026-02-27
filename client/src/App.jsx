@@ -8,6 +8,7 @@ import MonthlyNotes from './components/MonthlyNotes'
 import OpenPositions from './components/OpenPositions'
 import ExportBar from './components/ExportBar'
 import Settings from './components/Settings'
+import Policies from './components/Policies'
 import PwaPrompt from './components/PwaPrompt'
 import { api } from './hooks/useApi'
 import { useTheme } from './hooks/useTheme'
@@ -195,6 +196,9 @@ export default function App() {
 
       {/* Monthly Tab */}
       {tab === "monthly" && <MonthlyNotes notes={monthlyNotes} onAdd={handleAddMonthlyNote} onDelete={handleDeleteMonthlyNote} />}
+
+      {/* Policy Tab */}
+      {tab === "policy" && <Policies />}
 
       {/* Settings Tab */}
       {tab === "settings" && <Settings pairs={pairs} onPairsChange={setPairs} />}
