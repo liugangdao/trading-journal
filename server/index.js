@@ -8,6 +8,8 @@ import tradesRouter from './routes/trades.js'
 import notesRouter from './routes/notes.js'
 import monthlyNotesRouter from './routes/monthly-notes.js'
 import pairsRouter from './routes/pairs.js'
+import policiesRouter from './routes/policies.js'
+import violationsRouter from './routes/violations.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -21,6 +23,8 @@ app.use('/api/trades', tradesRouter)
 app.use('/api/notes', notesRouter)
 app.use('/api/monthly-notes', monthlyNotesRouter)
 app.use('/api/pairs', pairsRouter)
+app.use('/api/policies', policiesRouter)
+app.use('/api', violationsRouter)
 
 // Export data as JSON with optional date range
 app.get('/api/export', (req, res) => {
