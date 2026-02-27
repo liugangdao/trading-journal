@@ -22,6 +22,7 @@ export default function App() {
   const [editing, setEditing] = useState(null)
   const [closingId, setClosingId] = useState(null)
   const [pairs, setPairs] = useState([])
+  const [policies, setPolicies] = useState([])
   const [loading, setLoading] = useState(true)
   const { theme, toggleTheme } = useTheme()
 
@@ -37,8 +38,8 @@ export default function App() {
 
   // Load data on mount
   useEffect(() => {
-    Promise.all([api.getTrades(), api.getNotes(), api.getMonthlyNotes(), api.getPairs()])
-      .then(([t, n, mn, p]) => { setTrades(t); setNotes(n); setMonthlyNotes(mn); setPairs(p) })
+    Promise.all([api.getTrades(), api.getNotes(), api.getMonthlyNotes(), api.getPairs(), api.getPolicies()])
+      .then(([t, n, mn, p, pol]) => { setTrades(t); setNotes(n); setMonthlyNotes(mn); setPairs(p); setPolicies(pol) })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
@@ -68,8 +69,12 @@ export default function App() {
 
   const handleCloseSubmit = useCallback(async (form) => {
     try {
-      const updated = await api.updateTrade(closingId, { ...form, status: 'closed' })
+      const { violations, ...tradeData } = form
+      const updated = await api.updateTrade(closingId, { ...tradeData, status: 'closed' })
       setTrades(prev => prev.map(t => t.id === closingId ? updated : t))
+      if (violations && violations.length > 0) {
+        await api.updateTradeViolations(closingId, violations)
+      }
       setClosingId(null)
       setShowForm(false)
     } catch (err) {
@@ -179,6 +184,7 @@ export default function App() {
               editing={!!editing}
               mode={formMode}
               pairs={pairNames}
+              policies={policies}
               onSubmit={closingId ? handleCloseSubmit : handleAddTrade}
               onCancel={handleCancelForm}
             />

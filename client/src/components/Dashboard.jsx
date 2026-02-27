@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import KpiCard from './ui/KpiCard'
 import { calcStats } from '../lib/calc'
+import { api } from '../hooks/useApi'
 
 const CHART_COLORS = ["#3b82f6","#10b981","#ef4444","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#84cc16"]
 
@@ -13,6 +14,10 @@ const THEME_COLORS = {
 export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
   const stats = useMemo(() => calcStats(trades, spreadCostMap), [trades, spreadCostMap])
   const C = THEME_COLORS[theme] || THEME_COLORS.dark
+  const [violationStats, setViolationStats] = useState(null)
+  useEffect(() => {
+    api.getViolationStats().then(setViolationStats).catch(console.error)
+  }, [])
   const tooltipStyle = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 }
 
   if (!stats) {
@@ -122,6 +127,48 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
           </Card>
         ))}
       </div>
+
+      {/* Violation Analysis */}
+      {violationStats && violationStats.totalViolations > 0 && (
+        <div className="mt-8">
+          <h3 className="text-base font-bold mb-4">违规分析</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="text-[11px] text-muted mb-1">总违规次数</div>
+              <div className="text-2xl font-bold text-red">{violationStats.totalViolations}</div>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="text-[11px] text-muted mb-1">涉及交易笔数</div>
+              <div className="text-2xl font-bold">{violationStats.tradesWithViolations}</div>
+            </div>
+          </div>
+          {violationStats.topViolated.length > 0 && (
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="text-[11px] text-muted mb-3 font-medium">最常违反的政策</div>
+              <div className="space-y-2">
+                {violationStats.topViolated.slice(0, 5).map(v => {
+                  const catLabel = v.category === 'rules' ? '规则' : v.category === 'strategy' ? '策略' : '风控'
+                  return (
+                    <div key={v.id} className="flex items-center gap-3">
+                      <span className="text-[10px] bg-red/10 text-red px-1.5 py-0.5 rounded font-medium shrink-0">{catLabel}</span>
+                      <span className="text-sm flex-1 truncate">{v.title}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="h-2 bg-red/20 rounded-full overflow-hidden" style={{ width: '80px' }}>
+                          <div
+                            className="h-full bg-red rounded-full"
+                            style={{ width: `${(v.count / violationStats.topViolated[0].count) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-muted w-6 text-right">{v.count}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

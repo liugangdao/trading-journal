@@ -16,11 +16,13 @@ export function emptyTrade(pairs) {
   }
 }
 
-export default function TradeForm({ initial, editing, mode = "edit", pairs, onSubmit, onCancel }) {
+export default function TradeForm({ initial, editing, mode = "edit", pairs, policies, onSubmit, onCancel }) {
   const pairOptions = pairs && pairs.length > 0 ? pairs : DEFAULT_PAIRS
   const [form, setForm] = useState(initial || emptyTrade())
   const [error, setError] = useState("")
   const [openOnly, setOpenOnly] = useState(false)
+  const [selectedViolations, setSelectedViolations] = useState([])
+  const [showViolations, setShowViolations] = useState(false)
   const uf = (k) => (v) => { setForm(f => ({ ...f, [k]: v })); setError("") }
 
   const isClose = mode === "close"
@@ -42,6 +44,7 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, onSu
     const payload = { ...form }
     if (hideExit) payload.status = "open"
     if (isClose) payload.status = "closed"
+    payload.violations = selectedViolations
     onSubmit(payload)
   }
 
@@ -112,6 +115,49 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, onSu
             focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all duration-200 font-sans"
         />
       </div>
+
+      {/* Violation check — close mode only */}
+      {isClose && policies && policies.length > 0 && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setShowViolations(v => !v)}
+            className="text-sm text-muted hover:text-text cursor-pointer transition-colors flex items-center gap-1"
+          >
+            <span className={`transition-transform duration-200 ${showViolations ? 'rotate-90' : ''}`}>▶</span>
+            违规检查（可选）
+          </button>
+          {showViolations && (
+            <div className="mt-2 p-3 bg-bg rounded-lg border border-border space-y-3">
+              {['rules', 'strategy', 'risk'].map(cat => {
+                const catPolicies = policies.filter(p => p.category === cat && p.is_active)
+                if (catPolicies.length === 0) return null
+                const catLabel = cat === 'rules' ? '交易规则' : cat === 'strategy' ? '策略指南' : '风控管理'
+                return (
+                  <div key={cat}>
+                    <div className="text-[11px] text-muted font-medium mb-1">{catLabel}</div>
+                    {catPolicies.map(p => (
+                      <label key={p.id} className="flex items-center gap-2 py-0.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedViolations.includes(p.id)}
+                          onChange={e => {
+                            setSelectedViolations(prev =>
+                              e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id)
+                            )
+                          }}
+                          className="accent-red"
+                        />
+                        <span className="text-sm">{p.title}</span>
+                      </label>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Auto-calc preview */}
       {preview && (

@@ -21,7 +21,7 @@ Full-stack trading journal for forex/commodities. React 19 SPA served by Express
 
 - **Client**: React 19 + Vite 7 + Tailwind CSS v4 + Recharts
 - **Server**: Express 5 + better-sqlite3 (WAL mode, foreign keys)
-- **DB**: SQLite at `./data/journal.db` — 3 tables: `trades`, `weekly_notes`, `monthly_notes`
+- **DB**: SQLite at `./data/journal.db` — 5 tables: `trades`, `weekly_notes`, `monthly_notes`, `policies`, `trade_violations`
 - **Build**: Vite outputs to `server/public`; Express serves static files with SPA fallback
 - **Dev proxy**: Vite proxies `/api/*` → `http://localhost:3001`
 
@@ -34,6 +34,9 @@ All under `/api` prefix (defined in `server/routes/`):
 | `/api/trades` | GET, POST, PUT/:id, DELETE/:id | Sorting via `?sort=&order=` |
 | `/api/notes` | GET, POST, DELETE/:id | Weekly notes (week field: `YYYY-Www`) |
 | `/api/monthly-notes` | GET, POST, DELETE/:id | Monthly notes (month field: `YYYY-MM`) |
+| `/api/policies` | GET, POST, PUT/:id, DELETE/:id, PUT/:id/toggle | Policy CRUD + toggle active |
+| `/api/trades/:id/violations` | GET, PUT | Trade violation records |
+| `/api/violations/stats` | GET | Violation statistics |
 | `/api/export` | GET | JSON download of all data |
 
 Trades have `status`: `open` or `closed`. Closed trades require `exit_price` and `gross_pnl`.
@@ -44,7 +47,7 @@ Trades have `status`: `open` or `closed`. Closed trades require `exit_price` and
 - **API client**: `client/src/hooks/useApi.js` — fetch wrapper returning `api` object
 - **Calculations**: `client/src/lib/calc.js` — `calcTrade()` (R-multiple, pips, spread, net P&L) and `calcStats()` (aggregated stats, breakdowns by pair/strategy/emotion/day/timeframe)
 - **Constants**: `client/src/lib/constants.js` — pairs, strategies, emotions, scores, spread costs, timeframes
-- **Tabs**: record (trade form + table + open positions), stats (dashboard), weekly, monthly
+- **Tabs**: record (trade form + table + open positions), stats (dashboard), weekly, monthly, policy, settings
 - **Trade form modes**: open (new position), close (fill exit fields), edit (modify closed trade)
 - **UI components**: `client/src/components/ui/` — Input, Select, Tab, KpiCard
 
