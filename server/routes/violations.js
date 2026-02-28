@@ -6,6 +6,9 @@ const router = Router()
 // GET /api/trades/:id/violations
 router.get('/trades/:id/violations', (req, res) => {
   try {
+    const userId = req.session.userId
+    const trade = db.prepare('SELECT id FROM trades WHERE id = ? AND user_id = ?').get(req.params.id, userId)
+    if (!trade) return res.status(404).json({ error: 'Trade not found' })
     const violations = db.prepare(
       'SELECT tv.*, p.title, p.category FROM trade_violations tv JOIN policies p ON tv.policy_id = p.id WHERE tv.trade_id = ?'
     ).all(req.params.id)
@@ -18,10 +21,11 @@ router.get('/trades/:id/violations', (req, res) => {
 // PUT /api/trades/:id/violations — batch update (replace all violations for a trade)
 router.put('/trades/:id/violations', (req, res) => {
   try {
+    const userId = req.session.userId
     const { policy_ids } = req.body // array of policy IDs
     const tradeId = req.params.id
 
-    const trade = db.prepare('SELECT id FROM trades WHERE id = ?').get(tradeId)
+    const trade = db.prepare('SELECT id FROM trades WHERE id = ? AND user_id = ?').get(tradeId, userId)
     if (!trade) return res.status(404).json({ error: 'Trade not found' })
 
     const update = db.transaction(() => {
@@ -47,17 +51,24 @@ router.put('/trades/:id/violations', (req, res) => {
 // GET /api/violations/stats — violation statistics
 router.get('/violations/stats', (req, res) => {
   try {
+    const userId = req.session.userId
     const topViolated = db.prepare(`
       SELECT p.id, p.title, p.category, COUNT(*) as count
       FROM trade_violations tv
       JOIN policies p ON tv.policy_id = p.id
+      JOIN trades t ON tv.trade_id = t.id
+      WHERE t.user_id = ?
       GROUP BY p.id
       ORDER BY count DESC
       LIMIT 10
-    `).all()
+    `).all(userId)
 
-    const totalViolations = db.prepare('SELECT COUNT(*) as count FROM trade_violations').get().count
-    const tradesWithViolations = db.prepare('SELECT COUNT(DISTINCT trade_id) as count FROM trade_violations').get().count
+    const totalViolations = db.prepare(
+      'SELECT COUNT(*) as count FROM trade_violations tv JOIN trades t ON tv.trade_id = t.id WHERE t.user_id = ?'
+    ).get(userId).count
+    const tradesWithViolations = db.prepare(
+      'SELECT COUNT(DISTINCT tv.trade_id) as count FROM trade_violations tv JOIN trades t ON tv.trade_id = t.id WHERE t.user_id = ?'
+    ).get(userId).count
 
     res.json({ topViolated, totalViolations, tradesWithViolations })
   } catch (err) {

@@ -1,0 +1,79 @@
+import { Router } from 'express'
+import bcrypt from 'bcryptjs'
+import db, { seedUserData } from '../db.js'
+
+const router = Router()
+
+// POST /api/auth/register
+router.post('/register', async (req, res) => {
+  try {
+    const { username, email, password } = req.body
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: '用户名、邮箱和密码为必填项' })
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: '密码至少需要6个字符' })
+    }
+
+    const existing = db.prepare('SELECT id FROM users WHERE email = ? OR username = ?').get(email, username)
+    if (existing) {
+      return res.status(409).json({ error: '用户名或邮箱已被注册' })
+    }
+
+    const hash = await bcrypt.hash(password, 10)
+    const result = db.prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)').run(username.trim(), email.trim().toLowerCase(), hash)
+    const userId = result.lastInsertRowid
+
+    seedUserData(userId)
+
+    req.session.userId = userId
+    res.status(201).json({ id: userId, username: username.trim(), email: email.trim().toLowerCase() })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/auth/login
+router.post('/login', async (req, res) => {
+  try {
+    const { identifier, password } = req.body
+    if (!identifier || !password) {
+      return res.status(400).json({ error: '请输入账号和密码' })
+    }
+
+    const user = db.prepare('SELECT * FROM users WHERE email = ? OR username = ?').get(identifier.trim().toLowerCase(), identifier.trim())
+    if (!user) {
+      return res.status(401).json({ error: '账号或密码错误' })
+    }
+
+    const valid = await bcrypt.compare(password, user.password)
+    if (!valid) {
+      return res.status(401).json({ error: '账号或密码错误' })
+    }
+
+    req.session.userId = user.id
+    res.json({ id: user.id, username: user.username, email: user.email })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/auth/logout
+router.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) return res.status(500).json({ error: err.message })
+    res.clearCookie('connect.sid')
+    res.json({ success: true })
+  })
+})
+
+// GET /api/auth/me
+router.get('/me', (req, res) => {
+  if (!req.session || !req.session.userId) {
+    return res.json(null)
+  }
+  const user = db.prepare('SELECT id, username, email FROM users WHERE id = ?').get(req.session.userId)
+  res.json(user || null)
+})
+
+export default router

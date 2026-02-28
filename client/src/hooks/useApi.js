@@ -1,18 +1,32 @@
 const BASE = '/api'
 
+let onUnauthorized = null
+
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     ...options,
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
+    // Only trigger global 401 handler for non-auth routes
+    if (res.status === 401 && onUnauthorized && !path.startsWith('/auth/')) {
+      onUnauthorized()
+    }
     throw new Error(err.error || 'Request failed')
   }
   return res.json()
 }
 
 export const api = {
+  // Auth
+  setUnauthorizedHandler: (handler) => { onUnauthorized = handler },
+  register: (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
+  getMe: () => request('/auth/me'),
+
   // Trades
   getTrades: () => request('/trades'),
   createTrade: (data) => request('/trades', { method: 'POST', body: JSON.stringify(data) }),
@@ -59,7 +73,7 @@ export const api = {
     if (from) params.set('from', from)
     if (to) params.set('to', to)
     const qs = params.toString()
-    const res = await fetch(`${BASE}/export${qs ? '?' + qs : ''}`)
+    const res = await fetch(`${BASE}/export${qs ? '?' + qs : ''}`, { credentials: 'include' })
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

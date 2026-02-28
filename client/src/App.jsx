@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Layout from './components/Layout'
+import LandingPage from './components/LandingPage'
+import AuthPage from './components/AuthPage'
 import TradeForm, { emptyTrade } from './components/TradeForm'
 import TradeTable from './components/TradeTable'
 import Dashboard from './components/Dashboard'
@@ -14,6 +16,11 @@ import { api } from './hooks/useApi'
 import { useTheme } from './hooks/useTheme'
 
 export default function App() {
+  // Auth state: null = checking, false = logged out, object = logged in
+  const [authUser, setAuthUser] = useState(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [showAuth, setShowAuth] = useState(false)
+
   const [trades, setTrades] = useState([])
   const [notes, setNotes] = useState([])
   const [monthlyNotes, setMonthlyNotes] = useState([])
@@ -23,8 +30,59 @@ export default function App() {
   const [closingId, setClosingId] = useState(null)
   const [pairs, setPairs] = useState([])
   const [policies, setPolicies] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const { theme, toggleTheme } = useTheme()
+
+  // Check session on mount
+  useEffect(() => {
+    api.getMe()
+      .then(user => {
+        setAuthUser(user || false)
+        setAuthChecked(true)
+      })
+      .catch(() => {
+        setAuthUser(false)
+        setAuthChecked(true)
+      })
+  }, [])
+
+  // Set 401 handler to log user out
+  useEffect(() => {
+    api.setUnauthorizedHandler(() => {
+      setAuthUser(false)
+      setShowAuth(false)
+    })
+  }, [])
+
+  // Load data when authenticated
+  useEffect(() => {
+    if (!authUser) return
+    setLoading(true)
+    Promise.all([api.getTrades(), api.getNotes(), api.getMonthlyNotes(), api.getPairs(), api.getPolicies()])
+      .then(([t, n, mn, p, pol]) => { setTrades(t); setNotes(n); setMonthlyNotes(mn); setPairs(p); setPolicies(pol) })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [authUser])
+
+  // Auth handlers
+  const handleAuth = useCallback((user) => {
+    setAuthUser(user)
+    setShowAuth(false)
+  }, [])
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await api.logout()
+    } catch (err) {
+      console.error(err)
+    }
+    setAuthUser(false)
+    setTrades([])
+    setNotes([])
+    setMonthlyNotes([])
+    setPairs([])
+    setPolicies([])
+  }, [])
 
   // Derived data
   const openTrades = useMemo(() => trades.filter(t => t.status === 'open'), [trades])
@@ -35,14 +93,6 @@ export default function App() {
     return map
   }, [pairs])
   const pairNames = useMemo(() => pairs.map(p => p.name), [pairs])
-
-  // Load data on mount
-  useEffect(() => {
-    Promise.all([api.getTrades(), api.getNotes(), api.getMonthlyNotes(), api.getPairs(), api.getPolicies()])
-      .then(([t, n, mn, p, pol]) => { setTrades(t); setNotes(n); setMonthlyNotes(mn); setPairs(p); setPolicies(pol) })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
 
   // Trade CRUD
   const handleAddTrade = useCallback(async (form) => {
@@ -150,6 +200,24 @@ export default function App() {
       ? trades.find(t => t.id === editing)
       : emptyTrade(pairNames)
 
+  // Loading auth check
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center text-muted">
+        加载中...
+      </div>
+    )
+  }
+
+  // Not logged in - show landing or auth
+  if (!authUser) {
+    if (showAuth) {
+      return <AuthPage onAuth={handleAuth} onBack={() => setShowAuth(false)} theme={theme} onToggleTheme={toggleTheme} />
+    }
+    return <LandingPage onNavigateAuth={() => setShowAuth(true)} theme={theme} onToggleTheme={toggleTheme} />
+  }
+
+  // Logged in - loading data
   if (loading) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center text-muted">
@@ -159,7 +227,7 @@ export default function App() {
   }
 
   return (
-    <Layout tab={tab} setTab={setTab} tradeCount={closedTrades.length} openCount={openTrades.length} theme={theme} onToggleTheme={toggleTheme}>
+    <Layout tab={tab} setTab={setTab} tradeCount={closedTrades.length} openCount={openTrades.length} theme={theme} onToggleTheme={toggleTheme} user={authUser} onLogout={handleLogout}>
       {/* Record Tab */}
       {tab === "record" && (
         <div>

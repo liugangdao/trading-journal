@@ -6,7 +6,7 @@ const router = Router()
 // GET /api/notes - list all notes
 router.get('/', (req, res) => {
   try {
-    const notes = db.prepare('SELECT * FROM weekly_notes ORDER BY created_at DESC').all()
+    const notes = db.prepare('SELECT * FROM weekly_notes WHERE user_id = ? ORDER BY created_at DESC').all(req.session.userId)
     res.json(notes)
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -18,8 +18,8 @@ router.post('/', (req, res) => {
   try {
     const { week, lesson, plan } = req.body
     if (!week) return res.status(400).json({ error: 'Week is required' })
-    const stmt = db.prepare('INSERT INTO weekly_notes (week, lesson, plan) VALUES (?, ?, ?)')
-    const result = stmt.run(week, lesson || null, plan || null)
+    const stmt = db.prepare('INSERT INTO weekly_notes (user_id, week, lesson, plan) VALUES (?, ?, ?, ?)')
+    const result = stmt.run(req.session.userId, week, lesson || null, plan || null)
     const note = db.prepare('SELECT * FROM weekly_notes WHERE id = ?').get(result.lastInsertRowid)
     res.status(201).json(note)
   } catch (err) {
@@ -30,9 +30,9 @@ router.post('/', (req, res) => {
 // DELETE /api/notes/:id - delete note
 router.delete('/:id', (req, res) => {
   try {
-    const existing = db.prepare('SELECT * FROM weekly_notes WHERE id = ?').get(req.params.id)
+    const existing = db.prepare('SELECT * FROM weekly_notes WHERE id = ? AND user_id = ?').get(req.params.id, req.session.userId)
     if (!existing) return res.status(404).json({ error: 'Note not found' })
-    db.prepare('DELETE FROM weekly_notes WHERE id = ?').run(req.params.id)
+    db.prepare('DELETE FROM weekly_notes WHERE id = ? AND user_id = ?').run(req.params.id, req.session.userId)
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: err.message })

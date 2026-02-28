@@ -28,7 +28,7 @@ function ThemeToggle({ theme, onToggle }) {
   )
 }
 
-export default function Layout({ tab, setTab, tradeCount, openCount, theme, onToggleTheme, children }) {
+export default function Layout({ tab, setTab, tradeCount, openCount, theme, onToggleTheme, user, onLogout, children }) {
   return (
     <div className="min-h-screen bg-bg text-text font-sans">
       {/* Fixed Header */}
@@ -50,6 +50,17 @@ export default function Layout({ tab, setTab, tradeCount, openCount, theme, onTo
               <Tab active={tab === "settings"} onClick={() => setTab("settings")}>设置</Tab>
             </div>
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+            {user && (
+              <div className="flex items-center gap-2 ml-1">
+                <span className="text-xs text-muted hidden sm:inline">{user.username}</span>
+                <button
+                  onClick={onLogout}
+                  className="text-xs text-muted hover:text-red transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-hover"
+                >
+                  退出
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
