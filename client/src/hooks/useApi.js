@@ -67,6 +67,9 @@ export const api = {
   }),
   getViolationStats: () => request('/violations/stats'),
 
+  // Import
+  importData: (data) => request('/import', { method: 'POST', body: JSON.stringify(data) }),
+
   // Export
   exportData: async (from, to) => {
     const params = new URLSearchParams()

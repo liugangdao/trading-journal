@@ -67,6 +67,19 @@ router.post('/logout', (req, res) => {
   })
 })
 
+// GET /api/auth/orphan-count — check if orphan data exists
+router.get('/orphan-count', (req, res) => {
+  if (!req.session || !req.session.userId) {
+    return res.status(401).json({ error: '请先登录' })
+  }
+  const tables = ['trades', 'weekly_notes', 'monthly_notes', 'pairs', 'policies']
+  let total = 0
+  for (const table of tables) {
+    total += db.prepare(`SELECT COUNT(*) as c FROM ${table} WHERE user_id IS NULL`).get().c
+  }
+  res.json({ total })
+})
+
 // POST /api/auth/claim-data — claim orphan data (user_id IS NULL) for current user
 router.post('/claim-data', (req, res) => {
   if (!req.session || !req.session.userId) {

@@ -78,6 +78,51 @@ app.get('/api/export', requireAuth, (req, res) => {
   }
 })
 
+// Import data from exported JSON
+app.post('/api/import', requireAuth, (req, res) => {
+  try {
+    const userId = req.session.userId
+    const { trades, weeklyNotes, monthlyNotes } = req.body
+    if (!trades && !weeklyNotes && !monthlyNotes) {
+      return res.status(400).json({ error: '无效的导入数据' })
+    }
+
+    const result = { trades: 0, weeklyNotes: 0, monthlyNotes: 0 }
+
+    const importAll = db.transaction(() => {
+      if (trades && trades.length) {
+        const stmt = db.prepare(`
+          INSERT INTO trades (user_id, date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        for (const t of trades) {
+          stmt.run(userId, t.date, t.pair, t.direction, t.strategy, t.timeframe, t.lots ?? null, t.entry, t.stop, t.target ?? null, t.exit_price ?? null, t.gross_pnl ?? null, t.swap ?? 0, t.score ?? null, t.emotion ?? null, t.notes ?? null, t.status || 'closed', t.created_at || new Date().toISOString(), t.updated_at || new Date().toISOString())
+          result.trades++
+        }
+      }
+      if (weeklyNotes && weeklyNotes.length) {
+        const stmt = db.prepare('INSERT INTO weekly_notes (user_id, week, lesson, plan, created_at) VALUES (?, ?, ?, ?, ?)')
+        for (const n of weeklyNotes) {
+          stmt.run(userId, n.week, n.lesson ?? null, n.plan ?? null, n.created_at || new Date().toISOString())
+          result.weeklyNotes++
+        }
+      }
+      if (monthlyNotes && monthlyNotes.length) {
+        const stmt = db.prepare('INSERT INTO monthly_notes (user_id, month, lesson, plan, created_at) VALUES (?, ?, ?, ?, ?)')
+        for (const n of monthlyNotes) {
+          stmt.run(userId, n.month, n.lesson ?? null, n.plan ?? null, n.created_at || new Date().toISOString())
+          result.monthlyNotes++
+        }
+      }
+    })
+    importAll()
+
+    res.json({ success: true, imported: result })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Serve frontend in production
 const publicDir = join(__dirname, 'public')
 if (existsSync(publicDir)) {

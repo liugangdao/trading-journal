@@ -55,14 +55,17 @@ export default function App() {
   }, [])
 
   // Load data when authenticated
+  const reloadData = useCallback(() => {
+    return Promise.all([api.getTrades(), api.getNotes(), api.getMonthlyNotes(), api.getPairs(), api.getPolicies()])
+      .then(([t, n, mn, p, pol]) => { setTrades(t); setNotes(n); setMonthlyNotes(mn); setPairs(p); setPolicies(pol) })
+      .catch(console.error)
+  }, [])
+
   useEffect(() => {
     if (!authUser) return
     setLoading(true)
-    Promise.all([api.getTrades(), api.getNotes(), api.getMonthlyNotes(), api.getPairs(), api.getPolicies()])
-      .then(([t, n, mn, p, pol]) => { setTrades(t); setNotes(n); setMonthlyNotes(mn); setPairs(p); setPolicies(pol) })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [authUser])
+    reloadData().finally(() => setLoading(false))
+  }, [authUser, reloadData])
 
   // Auth handlers
   const handleAuth = useCallback((user) => {
@@ -232,7 +235,7 @@ export default function App() {
       {tab === "record" && (
         <div>
           {/* Export */}
-          <ExportBar />
+          <ExportBar onImported={reloadData} />
 
           {/* Open Positions */}
           <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={handleDeleteTrade} />
