@@ -14,9 +14,11 @@ export function calcTrade(t, spreadCostMap) {
 
   const stopPips = stop > 0 ? Math.abs(entry - stop) : 0
   const pnlPips = isBuy ? exitPrice - entry : entry - exitPrice
-  const rMultiple = stopPips > 0 ? pnlPips / stopPips : 0
   const spread = (costMap[t.pair] || 5) * lots
   const netPnl = gross - spread + swap
+  const dollarPerPip = pnlPips !== 0 ? gross / pnlPips : 0
+  const riskDollars = stopPips * dollarPerPip
+  const rMultiple = riskDollars > 0 ? netPnl / riskDollars : 0
 
   return {
     ...t,
