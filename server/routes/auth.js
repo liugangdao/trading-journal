@@ -67,6 +67,25 @@ router.post('/logout', (req, res) => {
   })
 })
 
+// POST /api/auth/claim-data — claim orphan data (user_id IS NULL) for current user
+router.post('/claim-data', (req, res) => {
+  if (!req.session || !req.session.userId) {
+    return res.status(401).json({ error: '请先登录' })
+  }
+  const userId = req.session.userId
+  const tables = ['trades', 'weekly_notes', 'monthly_notes', 'pairs', 'policies']
+  const result = {}
+  const claim = db.transaction(() => {
+    for (const table of tables) {
+      const r = db.prepare(`UPDATE ${table} SET user_id = ? WHERE user_id IS NULL`).run(userId)
+      result[table] = r.changes
+    }
+  })
+  claim()
+  const total = Object.values(result).reduce((a, b) => a + b, 0)
+  res.json({ claimed: result, total })
+})
+
 // GET /api/auth/me
 router.get('/me', (req, res) => {
   if (!req.session || !req.session.userId) {
