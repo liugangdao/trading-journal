@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../hooks/useApi'
+import { PHASE_LABELS } from '../lib/constants'
 
 const CATEGORIES = [
   { key: 'rules', label: '交易规则' },
@@ -13,7 +14,7 @@ export default function Policies() {
   const [activeCategory, setActiveCategory] = useState('rules')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const [form, setForm] = useState({ title: '', content: '' })
+  const [form, setForm] = useState({ title: '', content: '', phase: 'both' })
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -29,7 +30,7 @@ export default function Policies() {
   violationStats.topViolated?.forEach(v => { violationCountMap[v.id] = v.count })
 
   const resetForm = () => {
-    setForm({ title: '', content: '' })
+    setForm({ title: '', content: '', phase: 'both' })
     setEditingId(null)
     setShowForm(false)
     setError('')
@@ -45,6 +46,7 @@ export default function Policies() {
         category: activeCategory,
         title: form.title,
         content: form.content,
+        phase: form.phase,
       })
       setPolicies(prev => [...prev, created])
       resetForm()
@@ -55,7 +57,7 @@ export default function Policies() {
 
   const handleEdit = (policy) => {
     setEditingId(policy.id)
-    setForm({ title: policy.title, content: policy.content })
+    setForm({ title: policy.title, content: policy.content, phase: policy.phase || 'both' })
     setShowForm(true)
     setError('')
   }
@@ -69,6 +71,7 @@ export default function Policies() {
       const updated = await api.updatePolicy(editingId, {
         title: form.title,
         content: form.content,
+        phase: form.phase,
       })
       setPolicies(prev => prev.map(p => p.id === editingId ? updated : p))
       resetForm()
@@ -135,6 +138,13 @@ export default function Policies() {
                       违反 {violationCountMap[policy.id]} 次
                     </span>
                   )}
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                    policy.phase === 'entry' ? 'bg-accent/15 text-accent'
+                      : policy.phase === 'exit' ? 'bg-amber-500/15 text-amber-500'
+                      : 'bg-muted/15 text-muted'
+                  }`}>
+                    {PHASE_LABELS[policy.phase] || '通用'}
+                  </span>
                 </div>
                 <p className="text-xs text-muted leading-relaxed">{policy.content}</p>
               </div>
@@ -188,6 +198,25 @@ export default function Policies() {
                   focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all duration-200 font-sans"
               />
             </div>
+            <div>
+              <div className="text-[11px] text-muted mb-1">适用阶段</div>
+              <div className="flex gap-2">
+                {Object.entries(PHASE_LABELS).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, phase: key }))}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
+                      ${form.phase === key
+                        ? 'bg-accent text-white'
+                        : 'bg-input text-muted border border-border hover:text-text'
+                      }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex gap-3">
               <button onClick={editingId ? handleSave : handleAdd}
                 className="bg-accent text-white px-5 py-2 rounded-lg text-sm font-semibold cursor-pointer
@@ -204,7 +233,7 @@ export default function Policies() {
         </div>
       ) : (
         <button
-          onClick={() => { setShowForm(true); setEditingId(null); setForm({ title: '', content: '' }) }}
+          onClick={() => { setShowForm(true); setEditingId(null); setForm({ title: '', content: '', phase: 'both' }) }}
           className="mt-4 bg-accent text-white px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer
             hover:brightness-110 transition-all duration-200">
           + 添加新政策
