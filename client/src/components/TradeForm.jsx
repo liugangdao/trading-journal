@@ -3,6 +3,8 @@ import Input from './ui/Input'
 import Select from './ui/Select'
 import { PAIRS as DEFAULT_PAIRS, DIRECTIONS, STRATEGIES, TIMEFRAMES, SCORES, EMOTIONS } from '../lib/constants'
 import { calcTrade } from '../lib/calc'
+import LivermoreQuote from './LivermoreQuote'
+import { PHASE_LABELS } from '../lib/constants'
 
 const today = () => new Date().toISOString().split("T")[0]
 
@@ -16,17 +18,25 @@ export function emptyTrade(pairs) {
   }
 }
 
-export default function TradeForm({ initial, editing, mode = "edit", pairs, policies, onSubmit, onCancel }) {
+export default function TradeForm({ initial, editing, mode = "edit", pairs, policies, initialViolations = [], onSubmit, onCancel }) {
   const pairOptions = pairs && pairs.length > 0 ? pairs : DEFAULT_PAIRS
   const [form, setForm] = useState(initial || emptyTrade())
   const [error, setError] = useState("")
   const [openOnly, setOpenOnly] = useState(false)
-  const [selectedViolations, setSelectedViolations] = useState([])
-  const [showViolations, setShowViolations] = useState(false)
+  const [selectedViolations, setSelectedViolations] = useState(initialViolations)
   const uf = (k) => (v) => { setForm(f => ({ ...f, [k]: v })); setError("") }
 
   const isClose = mode === "close"
   const isNew = mode === "new"
+  const isEdit = mode === "edit"
+
+  // Filter policies by phase for violation checker
+  const filteredPolicies = (policies || []).filter(p => {
+    if (!p.is_active) return false
+    if (isEdit) return true // edit mode shows all phases
+    if (isClose) return p.phase === 'exit' || p.phase === 'both'
+    return p.phase === 'entry' || p.phase === 'both' // new/open mode
+  })
   const hideExit = isNew && openOnly
 
   const REQUIRED_CLOSE = ["exit_price", "gross_pnl"]
@@ -59,6 +69,7 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
   return (
     <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 mb-6">
       <h3 className="text-base font-bold mb-5">{title}</h3>
+      {!isEdit && <LivermoreQuote />}
 
       {/* Close mode: read-only summary of open position */}
       {isClose && (
@@ -116,46 +127,44 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
         />
       </div>
 
-      {/* Violation check — close mode only */}
-      {isClose && policies && policies.length > 0 && (
+      {/* Violation check — all modes */}
+      {filteredPolicies.length > 0 && (
         <div className="mt-4">
-          <button
-            type="button"
-            onClick={() => setShowViolations(v => !v)}
-            className="text-sm text-muted hover:text-text cursor-pointer transition-colors flex items-center gap-1"
-          >
-            <span className={`transition-transform duration-200 ${showViolations ? 'rotate-90' : ''}`}>▶</span>
-            违规检查（可选）
-          </button>
-          {showViolations && (
-            <div className="mt-2 p-3 bg-bg rounded-lg border border-border space-y-3">
-              {['rules', 'strategy', 'risk'].map(cat => {
-                const catPolicies = policies.filter(p => p.category === cat && p.is_active)
-                if (catPolicies.length === 0) return null
-                const catLabel = cat === 'rules' ? '交易规则' : cat === 'strategy' ? '策略指南' : '风控管理'
-                return (
-                  <div key={cat}>
-                    <div className="text-[11px] text-muted font-medium mb-1">{catLabel}</div>
-                    {catPolicies.map(p => (
-                      <label key={p.id} className="flex items-center gap-2 py-0.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedViolations.includes(p.id)}
-                          onChange={e => {
-                            setSelectedViolations(prev =>
-                              e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id)
-                            )
-                          }}
-                          className="accent-red"
-                        />
-                        <span className="text-sm">{p.title}</span>
-                      </label>
-                    ))}
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          <div className="text-[11px] text-muted font-medium mb-2">
+            {isClose ? '出场违规检查' : isEdit ? '违规检查' : '入场违规检查'}
+          </div>
+          <div className="p-3 bg-bg rounded-lg border border-border space-y-3">
+            {['rules', 'strategy', 'risk'].map(cat => {
+              const catPolicies = filteredPolicies.filter(p => p.category === cat)
+              if (catPolicies.length === 0) return null
+              const catLabel = cat === 'rules' ? '交易规则' : cat === 'strategy' ? '策略指南' : '风控管理'
+              return (
+                <div key={cat}>
+                  <div className="text-[11px] text-muted font-medium mb-1">{catLabel}</div>
+                  {catPolicies.map(p => (
+                    <label key={p.id} className="flex items-center gap-2 py-0.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedViolations.includes(p.id)}
+                        onChange={e => {
+                          setSelectedViolations(prev =>
+                            e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id)
+                          )
+                        }}
+                        className="accent-red"
+                      />
+                      <span className="text-sm">{p.title}</span>
+                      {isEdit && p.phase !== 'both' && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                          p.phase === 'entry' ? 'bg-accent/15 text-accent' : 'bg-amber-500/15 text-amber-500'
+                        }`}>{PHASE_LABELS[p.phase]}</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
