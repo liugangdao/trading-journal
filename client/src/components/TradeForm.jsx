@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import Input from './ui/Input'
 import Select from './ui/Select'
-import { PAIRS as DEFAULT_PAIRS, DIRECTIONS, STRATEGIES, TIMEFRAMES, SCORES, EMOTIONS } from '../lib/constants'
+import { PAIRS as DEFAULT_PAIRS, DIRECTIONS, STRATEGIES, TIMEFRAMES, SCORES, EMOTIONS, PHASE_LABELS } from '../lib/constants'
 import { calcTrade } from '../lib/calc'
 import LivermoreQuote from './LivermoreQuote'
-import { PHASE_LABELS } from '../lib/constants'
 
 const today = () => new Date().toISOString().split("T")[0]
 
@@ -32,8 +31,8 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
 
   // Filter policies by phase for violation checker
   const filteredPolicies = (policies || []).filter(p => {
+    if (isEdit) return p.is_active || initialViolations.includes(p.id)
     if (!p.is_active) return false
-    if (isEdit) return true // edit mode shows all phases
     if (isClose) return p.phase === 'exit' || p.phase === 'both'
     return p.phase === 'entry' || p.phase === 'both' // new/open mode
   })
