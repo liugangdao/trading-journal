@@ -3,16 +3,20 @@ import db from '../db.js'
 
 const router = Router()
 
-// GET /api/policies — optional ?category= filter
+// GET /api/policies — optional ?category= and ?phase= filters
 router.get('/', (req, res) => {
   try {
     const userId = req.session.userId
-    const { category } = req.query
+    const { category, phase } = req.query
     let query = 'SELECT * FROM policies WHERE user_id = ?'
     const params = [userId]
     if (category) {
       query += ' AND category = ?'
       params.push(category)
+    }
+    if (phase) {
+      query += ' AND (phase = ? OR phase = ?)'
+      params.push(phase, 'both')
     }
     query += ' ORDER BY category, sort_order, id'
     const policies = db.prepare(query).all(...params)
@@ -26,13 +30,13 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const userId = req.session.userId
-    const { category, title, content, sort_order } = req.body
+    const { category, title, content, sort_order, phase } = req.body
     if (!category || !title || !content) {
       return res.status(400).json({ error: '分类、标题和内容为必填项' })
     }
     const result = db.prepare(
-      'INSERT INTO policies (user_id, category, title, content, sort_order) VALUES (?, ?, ?, ?, ?)'
-    ).run(userId, category, title.trim(), content.trim(), sort_order ?? 0)
+      'INSERT INTO policies (user_id, category, title, content, sort_order, phase) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(userId, category, title.trim(), content.trim(), sort_order ?? 0, phase ?? 'both')
     const policy = db.prepare('SELECT * FROM policies WHERE id = ?').get(result.lastInsertRowid)
     res.status(201).json(policy)
   } catch (err) {
@@ -46,14 +50,15 @@ router.put('/:id', (req, res) => {
     const userId = req.session.userId
     const existing = db.prepare('SELECT * FROM policies WHERE id = ? AND user_id = ?').get(req.params.id, userId)
     if (!existing) return res.status(404).json({ error: 'Policy not found' })
-    const { category, title, content, sort_order } = req.body
+    const { category, title, content, sort_order, phase } = req.body
     db.prepare(
-      "UPDATE policies SET category = ?, title = ?, content = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
+      "UPDATE policies SET category = ?, title = ?, content = ?, sort_order = ?, phase = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
     ).run(
       category ?? existing.category,
       title?.trim() ?? existing.title,
       content?.trim() ?? existing.content,
       sort_order ?? existing.sort_order,
+      phase ?? existing.phase,
       req.params.id, userId
     )
     const policy = db.prepare('SELECT * FROM policies WHERE id = ?').get(req.params.id)
