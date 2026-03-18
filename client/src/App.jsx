@@ -28,6 +28,7 @@ export default function App() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
   const [closingId, setClosingId] = useState(null)
+  const [editViolations, setEditViolations] = useState([])
   const [pairs, setPairs] = useState([])
   const [policies, setPolicies] = useState([])
   const [loading, setLoading] = useState(false)
@@ -100,15 +101,21 @@ export default function App() {
   // Trade CRUD
   const handleAddTrade = useCallback(async (form) => {
     try {
+      const { violations, ...tradeData } = form
       if (editing) {
-        const updated = await api.updateTrade(editing, form)
+        const updated = await api.updateTrade(editing, tradeData)
         setTrades(prev => prev.map(t => t.id === editing ? updated : t))
+        await api.updateTradeViolations(editing, violations || [])
         setEditing(null)
       } else {
-        const created = await api.createTrade(form)
+        const created = await api.createTrade(tradeData)
         setTrades(prev => [...prev, created])
+        if (violations && violations.length > 0) {
+          await api.updateTradeViolations(created.id, violations)
+        }
       }
       setShowForm(false)
+      setEditViolations([])
     } catch (err) {
       console.error(err)
     }
@@ -125,9 +132,7 @@ export default function App() {
       const { violations, ...tradeData } = form
       const updated = await api.updateTrade(closingId, { ...tradeData, status: 'closed' })
       setTrades(prev => prev.map(t => t.id === closingId ? updated : t))
-      if (violations && violations.length > 0) {
-        await api.updateTradeViolations(closingId, violations)
-      }
+      await api.updateTradeViolations(closingId, violations || [])
       setClosingId(null)
       setShowForm(false)
     } catch (err) {
@@ -135,11 +140,18 @@ export default function App() {
     }
   }, [closingId])
 
-  const handleEditTrade = useCallback((trade) => {
+  const handleEditTrade = useCallback(async (trade) => {
     setEditing(trade.id)
     setClosingId(null)
     setShowForm(true)
     setTab("record")
+    try {
+      const violations = await api.getTradeViolations(trade.id)
+      setEditViolations(violations.map(v => v.policy_id))
+    } catch (err) {
+      console.error(err)
+      setEditViolations([])
+    }
   }, [])
 
   const handleDeleteTrade = useCallback(async (id) => {
@@ -155,6 +167,7 @@ export default function App() {
     setShowForm(false)
     setEditing(null)
     setClosingId(null)
+    setEditViolations([])
   }, [])
 
   // Notes CRUD
@@ -256,6 +269,7 @@ export default function App() {
               mode={formMode}
               pairs={pairNames}
               policies={policies}
+              initialViolations={editing ? editViolations : []}
               onSubmit={closingId ? handleCloseSubmit : handleAddTrade}
               onCancel={handleCancelForm}
             />
