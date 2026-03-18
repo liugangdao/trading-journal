@@ -105,32 +105,32 @@ const defaultPairs = {
 }
 
 const defaultPolicies = [
-  { category: 'rules', title: '每日最大亏损不超过账户净值的2%', content: '单日累计亏损达到账户净值2%时，立即停止交易，避免情绪化操作导致更大亏损。' },
-  { category: 'rules', title: '连续亏损3笔后当日停止交易', content: '连续3笔亏损说明当前市场状态与你的策略不匹配，继续交易大概率会增加亏损。' },
-  { category: 'rules', title: '不在重大数据公布前30分钟内开新仓', content: '重大经济数据（非农、CPI、央行决议等）公布前后市场波动剧烈，点差扩大，不适合入场。' },
-  { category: 'rules', title: '每笔交易必须设置止损', content: '止损是保护资金的最后防线，任何交易都必须在入场时就设定好止损价位。' },
-  { category: 'rules', title: '不做报复性交易', content: '亏损后立即反向开仓或加大仓位企图回本，是最常见的亏损原因之一。亏损后应冷静分析，而非冲动操作。' },
-  { category: 'strategy', title: '趋势交易必须等待至少一次回调确认', content: '趋势中直接追涨杀跌容易被套在高点/低点，等待回调到支撑/阻力位再入场可以获得更好的风险回报比。' },
-  { category: 'strategy', title: '突破交易需等待收盘确认', content: '假突破非常常见，等待K线收盘确认突破有效后再入场，可以大幅减少假突破带来的亏损。' },
-  { category: 'strategy', title: '逆势交易仓位减半', content: '逆势交易成功率较低，通过减小仓位来控制风险，即使判断错误损失也在可控范围内。' },
-  { category: 'strategy', title: '多时间框架确认', content: '至少2个时间级别方向一致时才入场。例如日线看多+4小时看多，避免在大周期逆势的情况下操作。' },
-  { category: 'strategy', title: '入场前明确记录入场理由和预期目标', content: '写下为什么入场、目标在哪、止损在哪，可以帮助你保持理性，避免模糊的"感觉"驱动交易。' },
-  { category: 'risk', title: '单笔风险不超过账户净值的1%', content: '控制单笔交易的最大亏损在账户的1%以内，这样即使连续亏损10笔，账户仍然有90%以上的资金。' },
-  { category: 'risk', title: '同方向最多持有3个仓位', content: '同方向持仓过多会导致风险集中，一旦行情反转会面临巨大亏损。分散持仓可以降低系统性风险。' },
-  { category: 'risk', title: '盈亏比低于1:1.5的交易不开仓', content: '只做潜在盈利大于潜在亏损1.5倍以上的交易，长期下来即使胜率只有40%也能盈利。' },
-  { category: 'risk', title: '浮盈超过1R后将止损移至成本价', content: '当浮盈达到一倍风险值（1R）后，将止损移到成本价，确保这笔交易不会从盈利变成亏损。' },
-  { category: 'risk', title: '每周最大亏损不超过账户净值的5%', content: '设定周度亏损上限，达到后本周停止交易。这能防止在不利的市场环境中持续亏损。' },
+  { category: 'rules', title: '每日最大亏损不超过账户净值的2%', content: '单日累计亏损达到账户净值2%时，立即停止交易，避免情绪化操作导致更大亏损。', phase: 'both' },
+  { category: 'rules', title: '连续亏损3笔后当日停止交易', content: '连续3笔亏损说明当前市场状态与你的策略不匹配，继续交易大概率会增加亏损。', phase: 'both' },
+  { category: 'rules', title: '不在重大数据公布前30分钟内开新仓', content: '重大经济数据（非农、CPI、央行决议等）公布前后市场波动剧烈，点差扩大，不适合入场。', phase: 'entry' },
+  { category: 'rules', title: '每笔交易必须设置止损', content: '止损是保护资金的最后防线，任何交易都必须在入场时就设定好止损价位。', phase: 'entry' },
+  { category: 'rules', title: '不做报复性交易', content: '亏损后立即反向开仓或加大仓位企图回本，是最常见的亏损原因之一。亏损后应冷静分析，而非冲动操作。', phase: 'entry' },
+  { category: 'strategy', title: '趋势交易必须等待至少一次回调确认', content: '趋势中直接追涨杀跌容易被套在高点/低点，等待回调到支撑/阻力位再入场可以获得更好的风险回报比。', phase: 'entry' },
+  { category: 'strategy', title: '突破交易需等待收盘确认', content: '假突破非常常见，等待K线收盘确认突破有效后再入场，可以大幅减少假突破带来的亏损。', phase: 'entry' },
+  { category: 'strategy', title: '逆势交易仓位减半', content: '逆势交易成功率较低，通过减小仓位来控制风险，即使判断错误损失也在可控范围内。', phase: 'entry' },
+  { category: 'strategy', title: '多时间框架确认', content: '至少2个时间级别方向一致时才入场。例如日线看多+4小时看多，避免在大周期逆势的情况下操作。', phase: 'entry' },
+  { category: 'strategy', title: '入场前明确记录入场理由和预期目标', content: '写下为什么入场、目标在哪、止损在哪，可以帮助你保持理性，避免模糊的"感觉"驱动交易。', phase: 'entry' },
+  { category: 'risk', title: '单笔风险不超过账户净值的1%', content: '控制单笔交易的最大亏损在账户的1%以内，这样即使连续亏损10笔，账户仍然有90%以上的资金。', phase: 'entry' },
+  { category: 'risk', title: '同方向最多持有3个仓位', content: '同方向持仓过多会导致风险集中，一旦行情反转会面临巨大亏损。分散持仓可以降低系统性风险。', phase: 'entry' },
+  { category: 'risk', title: '盈亏比低于1:1.5的交易不开仓', content: '只做潜在盈利大于潜在亏损1.5倍以上的交易，长期下来即使胜率只有40%也能盈利。', phase: 'entry' },
+  { category: 'risk', title: '浮盈超过1R后将止损移至成本价', content: '当浮盈达到一倍风险值（1R）后，将止损移到成本价，确保这笔交易不会从盈利变成亏损。', phase: 'exit' },
+  { category: 'risk', title: '每周最大亏损不超过账户净值的5%', content: '设定周度亏损上限，达到后本周停止交易。这能防止在不利的市场环境中持续亏损。', phase: 'both' },
 ]
 
 export function seedUserData(userId) {
   const insertPair = db.prepare('INSERT INTO pairs (user_id, name, spread_cost, sort_order) VALUES (?, ?, ?, ?)')
-  const insertPolicy = db.prepare('INSERT INTO policies (user_id, category, title, content, sort_order) VALUES (?, ?, ?, ?, ?)')
+  const insertPolicy = db.prepare('INSERT INTO policies (user_id, category, title, content, sort_order, phase) VALUES (?, ?, ?, ?, ?, ?)')
   const seed = db.transaction(() => {
     Object.entries(defaultPairs).forEach(([name, cost], i) => {
       insertPair.run(userId, name, cost, i)
     })
     defaultPolicies.forEach((p, i) => {
-      insertPolicy.run(userId, p.category, p.title, p.content, i)
+      insertPolicy.run(userId, p.category, p.title, p.content, i, p.phase)
     })
   })
   seed()
@@ -190,6 +190,12 @@ if (!pairCols.some(c => c.name === 'user_id')) {
 const policyCols = db.prepare("PRAGMA table_info(policies)").all()
 if (!policyCols.some(c => c.name === 'user_id')) {
   db.exec('ALTER TABLE policies ADD COLUMN user_id INTEGER REFERENCES users(id)')
+}
+
+// Migration: add phase column to policies
+const policyColsPhase = db.prepare("PRAGMA table_info(policies)").all()
+if (!policyColsPhase.some(c => c.name === 'phase')) {
+  db.exec("ALTER TABLE policies ADD COLUMN phase TEXT NOT NULL DEFAULT 'both'")
 }
 
 // Migration: remove UNIQUE constraint on pairs.name (now per-user)
