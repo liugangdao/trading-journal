@@ -26,7 +26,7 @@ function SortHeader({ col, label, sortKey, sortOrder, onSort }) {
 function TradeCard({ trade: t, index, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   return (
-    <div className="bg-card border border-border rounded-xl p-3">
+    <div className="bg-card border border-border rounded-xl p-3 active:scale-[0.97] active:opacity-80 transition-transform duration-100">
       <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center gap-2">
           <span className="font-bold text-sm">{t.pair}</span>

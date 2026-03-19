@@ -97,3 +97,47 @@
   --font-sans: 'Inter', 'SF Pro', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
+
+/* Mobile sheet animations */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes sheet-down {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+@keyframes fade-in-overlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-out-overlay {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.animate-sheet-up {
+  animation: sheet-up 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.animate-sheet-down {
+  animation: sheet-down 250ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.animate-fade-in-overlay {
+  animation: fade-in-overlay 200ms ease both;
+}
+.animate-fade-out-overlay {
+  animation: fade-out-overlay 200ms ease both;
+}
+
+/* Mobile tab content transition */
+.mobile-tab-enter {
+  animation: fade-in 150ms ease both;
+}
+
+/* Safe area padding utilities */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}

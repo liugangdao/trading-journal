@@ -11,6 +11,8 @@ import OpenPositions from './components/OpenPositions'
 import ExportBar from './components/ExportBar'
 import Settings from './components/Settings'
 import Policies from './components/Policies'
+import NotesTab from './components/NotesTab'
+import MoreTab from './components/MoreTab'
 import PwaPrompt from './components/PwaPrompt'
 import { api } from './hooks/useApi'
 import { useTheme } from './hooks/useTheme'
@@ -170,6 +172,13 @@ export default function App() {
     setEditViolations([])
   }, [])
 
+  const handleNewTrade = useCallback(() => {
+    setEditing(null)
+    setClosingId(null)
+    setEditViolations([])
+    setShowForm(true)
+  }, [])
+
   // Notes CRUD
   const handleAddNote = useCallback(async (form) => {
     try {
@@ -242,17 +251,50 @@ export default function App() {
     )
   }
 
+  // Mobile tab content renderer
+  const mobileTabContent = (() => {
+    switch (tab) {
+      case 'record': return (
+        <div>
+          <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={handleDeleteTrade} />
+          <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} spreadCostMap={spreadCostMap} />
+        </div>
+      )
+      case 'stats': return <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />
+      case 'notes': return (
+        <NotesTab
+          notes={notes} monthlyNotes={monthlyNotes}
+          onAddNote={handleAddNote} onDeleteNote={handleDeleteNote}
+          onAddMonthlyNote={handleAddMonthlyNote} onDeleteMonthlyNote={handleDeleteMonthlyNote}
+        />
+      )
+      case 'more': return (
+        <MoreTab
+          pairs={pairs} onPairsChange={setPairs} onImported={reloadData}
+          theme={theme} onToggleTheme={toggleTheme} user={authUser} onLogout={handleLogout}
+        />
+      )
+      default: return null
+    }
+  })()
+
   return (
-    <Layout tab={tab} setTab={setTab} tradeCount={closedTrades.length} openCount={openTrades.length} theme={theme} onToggleTheme={toggleTheme} user={authUser} onLogout={handleLogout}>
-      {/* Record Tab */}
+    <Layout
+      tab={tab} setTab={setTab} tradeCount={closedTrades.length} openCount={openTrades.length}
+      theme={theme} onToggleTheme={toggleTheme} user={authUser} onLogout={handleLogout}
+      // Mobile sheet props
+      showForm={showForm} formMode={formMode} formInitial={formInitial}
+      onNewTrade={handleNewTrade} onFormSubmit={closingId ? handleCloseSubmit : handleAddTrade}
+      onFormCancel={handleCancelForm}
+      pairs={pairNames} policies={policies} editViolations={editViolations}
+      editing={editing} closingId={closingId}
+      mobileTabContent={mobileTabContent}
+    >
+      {/* Desktop tab content — unchanged */}
       {tab === "record" && (
         <div>
-          {/* Export */}
           <ExportBar onImported={reloadData} />
-
-          {/* Open Positions */}
           <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={handleDeleteTrade} />
-
           {!showForm && (
             <button
               onClick={() => { setEditing(null); setClosingId(null); setShowForm(true) }}
@@ -261,7 +303,6 @@ export default function App() {
               + 记录交易
             </button>
           )}
-
           {showForm && (
             <TradeForm
               key={editing || closingId || 'new'}
@@ -275,24 +316,13 @@ export default function App() {
               onCancel={handleCancelForm}
             />
           )}
-
           <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} spreadCostMap={spreadCostMap} />
         </div>
       )}
-
-      {/* Stats Tab */}
       {tab === "stats" && <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />}
-
-      {/* Weekly Tab */}
       {tab === "weekly" && <WeeklyNotes notes={notes} onAdd={handleAddNote} onDelete={handleDeleteNote} />}
-
-      {/* Monthly Tab */}
       {tab === "monthly" && <MonthlyNotes notes={monthlyNotes} onAdd={handleAddMonthlyNote} onDelete={handleDeleteMonthlyNote} />}
-
-      {/* Policy Tab */}
       {tab === "policy" && <Policies />}
-
-      {/* Settings Tab */}
       {tab === "settings" && <Settings pairs={pairs} onPairsChange={setPairs} />}
       <PwaPrompt />
     </Layout>

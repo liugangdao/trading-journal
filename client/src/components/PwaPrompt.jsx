@@ -9,7 +9,7 @@ export default function PwaPrompt() {
   if (!needRefresh) return null
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 bg-card border border-border rounded-xl p-4 shadow-2xl z-[100]">
+    <div className="fixed bottom-20 left-4 right-4 sm:bottom-4 sm:left-auto sm:right-4 sm:w-80 bg-card border border-border rounded-xl p-4 shadow-2xl z-[100]">
       <p className="text-sm mb-3">有新版本可用</p>
       <div className="flex gap-2">
         <button

@@ -6,7 +6,7 @@ export default function OpenPositions({ openTrades, onClose, onDelete }) {
       <h3 className="text-sm font-bold text-muted mb-3">持仓中 ({openTrades.length})</h3>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
         {openTrades.map(trade => (
-          <div key={trade.id} className="bg-card border border-border rounded-xl p-4">
+          <div key={trade.id} className="bg-card border border-border rounded-xl p-4 active:scale-[0.98] transition-transform duration-100">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm">{trade.pair}</span>
@@ -38,14 +38,14 @@ export default function OpenPositions({ openTrades, onClose, onDelete }) {
               <button
                 onClick={() => onClose(trade)}
                 className="flex-1 bg-accent text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer
-                  hover:brightness-110 transition-all duration-200"
+                  hover:brightness-110 active:scale-95 transition-all duration-200"
               >
                 平仓
               </button>
               <button
                 onClick={() => onDelete(trade.id)}
                 className="text-muted border border-border px-3 py-1.5 rounded-lg text-xs cursor-pointer
-                  hover:text-red hover:border-red/30 transition-all duration-200"
+                  hover:text-red hover:border-red/30 active:scale-95 transition-all duration-200"
               >
                 删除
               </button>
