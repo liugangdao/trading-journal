@@ -143,7 +143,6 @@ export default function App() {
   const handleEditTrade = useCallback(async (trade) => {
     setEditing(trade.id)
     setClosingId(null)
-    setShowForm(true)
     setTab("record")
     try {
       const violations = await api.getTradeViolations(trade.id)
@@ -152,6 +151,7 @@ export default function App() {
       console.error(err)
       setEditViolations([])
     }
+    setShowForm(true)
   }, [])
 
   const handleDeleteTrade = useCallback(async (id) => {
