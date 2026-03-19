@@ -34,11 +34,11 @@ const icons = {
 }
 
 const TABS = [
-  { key: 'record', label: '记录', icon: icons.record },
-  { key: 'stats', label: '统计', icon: icons.stats },
-  { key: 'add', label: '', icon: null },
-  { key: 'notes', label: '笔记', icon: icons.notes },
-  { key: 'more', label: '更多', icon: icons.more },
+  { key: 'record', label: '记录', title: '交易记录', icon: icons.record },
+  { key: 'stats', label: '统计', title: '数据面板', icon: icons.stats },
+  { key: 'add', label: '', title: '', icon: null },
+  { key: 'notes', label: '笔记', title: '复盘笔记', icon: icons.notes },
+  { key: 'more', label: '更多', title: '更多', icon: icons.more },
 ]
 
 export default function MobileLayout({
@@ -48,6 +48,7 @@ export default function MobileLayout({
   pairs, policies, editViolations, editing, closingId,
 }) {
   const sheetTitle = formMode === 'close' ? '平仓记录' : formMode === 'edit' ? '编辑交易' : '记录交易'
+  const headerTitle = TABS.find(t => t.key === tab)?.title || '交易日志'
 
   const handleTabPress = (key) => {
     if (key === 'add') {
@@ -59,22 +60,27 @@ export default function MobileLayout({
   }
 
   return (
-    <div className="min-h-screen bg-bg text-text font-sans flex flex-col">
+    <div className="min-h-screen bg-bg text-text font-sans">
       {/* Top bar */}
-      <header className="bg-card border-b border-border px-4 py-3 text-center pt-safe">
-        <h1 className="text-[15px] font-semibold">交易日志</h1>
+      <header className="fixed top-0 left-0 right-0 z-40 bg-card border-b border-border px-4 py-3 text-center"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}>
+        <h1 className="text-[15px] font-semibold">{headerTitle}</h1>
       </header>
 
-      {/* Content area */}
-      <main className="flex-1 overflow-y-auto px-3 py-3">
+      {/* Content area — padded for fixed header and tab bar */}
+      <main className="px-3 py-3"
+        style={{
+          marginTop: 'calc(env(safe-area-inset-top, 0px) + 52px)',
+          marginBottom: 'calc(env(safe-area-inset-bottom, 0px) + 60px)',
+        }}>
         <div key={tab} className="mobile-tab-enter">
           {children}
         </div>
       </main>
 
-      {/* Bottom tab bar */}
-      <nav className="bg-card border-t border-border flex items-end justify-around px-2 pt-1.5"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}>
+      {/* Bottom tab bar — fixed */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border flex items-end justify-around px-2 pt-1.5"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}>
         {TABS.map(t => (
           t.key === 'add' ? (
             <button

@@ -36,7 +36,8 @@ export default function MobileSheet({ open, onClose, title, children }) {
       {/* Sheet */}
       <div className={`absolute inset-0 bg-bg flex flex-col ${closing ? 'animate-sheet-down' : 'animate-sheet-up'}`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card pt-safe">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}>
           <button
             onClick={handleClose}
             className="text-accent text-sm font-medium min-w-[60px] text-left active:opacity-70"
@@ -48,7 +49,8 @@ export default function MobileSheet({ open, onClose, title, children }) {
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain pb-safe">
+        <div className="flex-1 overflow-y-auto overscroll-contain"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
           {children}
         </div>
       </div>
