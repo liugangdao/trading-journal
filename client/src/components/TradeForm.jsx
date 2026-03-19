@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Input from './ui/Input'
 import Select from './ui/Select'
 import { PAIRS as DEFAULT_PAIRS, DIRECTIONS, STRATEGIES, TIMEFRAMES, SCORES, EMOTIONS, PHASE_LABELS } from '../lib/constants'
@@ -22,7 +22,8 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
   const [form, setForm] = useState(initial || emptyTrade())
   const [error, setError] = useState("")
   const [openOnly, setOpenOnly] = useState(false)
-  const [selectedViolations, setSelectedViolations] = useState(initialViolations)
+  // Track confirmed (checked) policies — unchecked = violation
+  const [confirmedPolicies, setConfirmedPolicies] = useState([])
   const uf = (k) => (v) => { setForm(f => ({ ...f, [k]: v })); setError("") }
 
   const isClose = mode === "close"
@@ -36,6 +37,13 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
     if (isClose) return p.phase === 'exit' || p.phase === 'both'
     return p.phase === 'entry' || p.phase === 'both' // new/open mode
   })
+  // In edit mode, pre-check all policies that were NOT violated
+  useEffect(() => {
+    if (isEdit && filteredPolicies.length > 0 && initialViolations.length >= 0) {
+      setConfirmedPolicies(filteredPolicies.filter(p => !initialViolations.includes(p.id)).map(p => p.id))
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const hideExit = isNew && openOnly
 
   const REQUIRED_CLOSE = ["exit_price", "gross_pnl"]
@@ -53,7 +61,10 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
     const payload = { ...form }
     if (hideExit) payload.status = "open"
     if (isClose) payload.status = "closed"
-    payload.violations = selectedViolations
+    // Unchecked policies = violations
+    payload.violations = filteredPolicies
+      .filter(p => !confirmedPolicies.includes(p.id))
+      .map(p => p.id)
     onSubmit(payload)
   }
 
@@ -126,11 +137,11 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
         />
       </div>
 
-      {/* Violation check — all modes */}
+      {/* Rule confirmation — all modes, unchecked = violation */}
       {filteredPolicies.length > 0 && (
         <div className="mt-4">
           <div className="text-[11px] text-muted font-medium mb-2">
-            {isClose ? '出场违规检查' : isEdit ? '违规检查' : '入场违规检查'}
+            {isClose ? '出场纪律确认' : isEdit ? '纪律确认' : '入场纪律确认'}
           </div>
           <div className="p-3 bg-bg rounded-lg border border-border space-y-3">
             {['rules', 'strategy', 'risk'].map(cat => {
@@ -141,16 +152,18 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
                 <div key={cat}>
                   <div className="text-[11px] text-muted font-medium mb-1">{catLabel}</div>
                   {catPolicies.map(p => (
-                    <label key={p.id} className="flex items-center gap-2 py-0.5 cursor-pointer">
+                    <label key={p.id} className={`flex items-center gap-2 py-0.5 cursor-pointer ${
+                      !confirmedPolicies.includes(p.id) ? 'text-red/80' : ''
+                    }`}>
                       <input
                         type="checkbox"
-                        checked={selectedViolations.includes(p.id)}
+                        checked={confirmedPolicies.includes(p.id)}
                         onChange={e => {
-                          setSelectedViolations(prev =>
+                          setConfirmedPolicies(prev =>
                             e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id)
                           )
                         }}
-                        className="accent-red"
+                        className="accent-green"
                       />
                       <span className="text-sm">{p.title}</span>
                       {isEdit && p.phase !== 'both' && (
