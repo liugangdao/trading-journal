@@ -264,6 +264,7 @@ export default function App() {
 
           {showForm && (
             <TradeForm
+              key={editing || closingId || 'new'}
               initial={formInitial}
               editing={!!editing}
               mode={formMode}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Input from './ui/Input'
 import Select from './ui/Select'
 import { PAIRS as DEFAULT_PAIRS, DIRECTIONS, STRATEGIES, TIMEFRAMES, SCORES, EMOTIONS, PHASE_LABELS } from '../lib/constants'
@@ -23,7 +23,14 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
   const [error, setError] = useState("")
   const [openOnly, setOpenOnly] = useState(false)
   // Track confirmed (checked) policies — unchecked = violation
-  const [confirmedPolicies, setConfirmedPolicies] = useState([])
+  // In edit mode, pre-check policies that were NOT violated
+  const [confirmedPolicies, setConfirmedPolicies] = useState(() => {
+    if (mode === "edit") {
+      const filtered = (policies || []).filter(p => p.is_active || initialViolations.includes(p.id))
+      return filtered.filter(p => !initialViolations.includes(p.id)).map(p => p.id)
+    }
+    return []
+  })
   const uf = (k) => (v) => { setForm(f => ({ ...f, [k]: v })); setError("") }
 
   const isClose = mode === "close"
@@ -37,12 +44,6 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
     if (isClose) return p.phase === 'exit' || p.phase === 'both'
     return p.phase === 'entry' || p.phase === 'both' // new/open mode
   })
-  // In edit mode, pre-check all policies that were NOT violated
-  useEffect(() => {
-    if (isEdit && filteredPolicies.length > 0 && initialViolations.length >= 0) {
-      setConfirmedPolicies(filteredPolicies.filter(p => !initialViolations.includes(p.id)).map(p => p.id))
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const hideExit = isNew && openOnly
 
