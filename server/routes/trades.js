@@ -1,6 +1,5 @@
 import { Router } from 'express'
 import db from '../db.js'
-import { notifyTradeClose } from '../webhook.js'
 
 const router = Router()
 
@@ -73,10 +72,6 @@ router.put('/:id', (req, res) => {
       tradeStatus, req.params.id, userId
     )
     const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(req.params.id)
-    // Notify via Telegram when trade is closed
-    if (existing.status === 'open' && tradeStatus === 'closed') {
-      notifyTradeClose(trade)  // fire-and-forget, don't await
-    }
     res.json(trade)
   } catch (err) {
     res.status(500).json({ error: err.message })
