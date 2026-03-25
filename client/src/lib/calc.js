@@ -15,7 +15,7 @@ export function calcTrade(t, spreadCostMap) {
   const stopPips = stop > 0 ? Math.abs(entry - stop) : 0
   const pnlPips = isBuy ? exitPrice - entry : entry - exitPrice
   const spread = (costMap[t.pair] || 5) * lots
-  const netPnl = gross - spread + swap
+  const netPnl = gross + swap
   const dollarPerPip = pnlPips !== 0 ? gross / pnlPips : 0
   const riskDollars = stopPips * dollarPerPip
   const rMultiple = riskDollars > 0 ? netPnl / riskDollars : 0
@@ -75,7 +75,7 @@ export function calcStats(trades, spreadCostMap) {
     totalSwap: Math.round(totalSwap * 100) / 100,
     avgWin: Math.round(avgWin * 100) / 100,
     avgLoss: Math.round(avgLoss * 100) / 100,
-    profitFactor: avgLoss !== 0 ? Math.round(Math.abs(avgWin / avgLoss) * 100) / 100 : 0,
+    profitFactor: losses.length > 0 ? Math.round(Math.abs(wins.reduce((s, t) => s + t.netPnl, 0) / losses.reduce((s, t) => s + t.netPnl, 0)) * 100) / 100 : 0,
     avgR: Math.round(computed.reduce((s, t) => s + t.rMultiple, 0) / computed.length * 100) / 100,
     byPair: toArr(byPair).sort((a, b) => b.pnl - a.pnl),
     byStrat: toArr(byStrat).sort((a, b) => b.pnl - a.pnl),

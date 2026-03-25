@@ -53,7 +53,7 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
           ))}
         </Card>
         <Card title="成本分析">
-          {[["总毛利", "$" + stats.totalGross.toFixed(2)], ["点差成本", "-$" + Math.abs(stats.totalSpread).toFixed(2)], ["库存费", (stats.totalSwap >= 0 ? "+$" : "-$") + Math.abs(stats.totalSwap).toFixed(2)], ["净盈亏", "$" + stats.totalNet.toFixed(2)]].map(([k, v]) => (
+          {[["账户盈亏", "$" + stats.totalGross.toFixed(2)], ["点差成本(参考)", "$" + Math.abs(stats.totalSpread).toFixed(2)], ["库存费", (stats.totalSwap >= 0 ? "+$" : "-$") + Math.abs(stats.totalSwap).toFixed(2)], ["净盈亏", "$" + stats.totalNet.toFixed(2)]].map(([k, v]) => (
             <StatRow key={k} label={k} value={v} />
           ))}
         </Card>
