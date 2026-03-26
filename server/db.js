@@ -216,4 +216,10 @@ if (pairIndexes && pairIndexes.sql && pairIndexes.sql.includes('UNIQUE')) {
   `)
 }
 
+// Migration: add risk_amount column to trades
+const tradeColsRisk = db.prepare("PRAGMA table_info(trades)").all()
+if (!tradeColsRisk.some(c => c.name === 'risk_amount')) {
+  db.exec("ALTER TABLE trades ADD COLUMN risk_amount REAL DEFAULT NULL")
+}
+
 export default db
