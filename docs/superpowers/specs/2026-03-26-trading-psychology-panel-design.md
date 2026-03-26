@@ -43,10 +43,16 @@ status 字段为 TEXT 类型，无需迁移，直接支持新值 `missed`。
 
 - 接受新字段 `risk_amount`（可选）
 - 接受 `status: 'missed'`，此时只校验 date, pair, direction
+- **验证逻辑分支：** 现有代码对所有交易校验 `entry != null && stop != null`，需改为按 status 条件校验：
+  - `missed`：只校验 date, pair, direction
+  - `open` / `closed`：保持现有校验逻辑（entry, stop 必填等）
+- **INSERT SQL 更新：** 现有 INSERT 语句显式枚举列名，需加入 `risk_amount`
 
 ### PUT /api/trades/:id
 
 - 支持更新 `risk_amount`
+- **UPDATE SQL 更新：** 现有 UPDATE 语句显式枚举列名，需加入 `risk_amount`
+- **状态转换限制：** missed 状态的记录不可转为 open/closed（反之亦然）。踏空记录是独立的心理记录，不是未完成的交易
 
 ### GET /api/trades
 
@@ -94,7 +100,7 @@ status 字段为 TEXT 类型，无需迁移，直接支持新值 `missed`。
 
 ### 5. 计算逻辑（calc.js）
 
-- `calcStats()` 继续只统计 `closed` 状态交易（现有逻辑已天然兼容，只对有 exit_price 的记录计算）
+- `calcStats()` 必须显式过滤掉 `status=missed` 的记录（不能仅依赖 exit_price 为空的隐式过滤，防止未来改动引入 bug）
 - 新增辅助函数或在面板组件内计算：
   - `todayRiskTotal`：今日 open 交易的 risk_amount 总和
   - `todayTickets`：今日 open 交易笔数
