@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard'
 import WeeklyNotes from './components/WeeklyNotes'
 import MonthlyNotes from './components/MonthlyNotes'
 import OpenPositions from './components/OpenPositions'
+import PsychologyPanel from './components/PsychologyPanel'
 import ExportBar from './components/ExportBar'
 import Settings from './components/Settings'
 import Policies from './components/Policies'
@@ -179,6 +180,15 @@ export default function App() {
     setShowForm(true)
   }, [])
 
+  const handleAddMissed = useCallback(async (form) => {
+    try {
+      const created = await api.createTrade(form)
+      setTrades(prev => [...prev, created])
+    } catch (err) {
+      console.error(err)
+    }
+  }, [])
+
   // Notes CRUD
   const handleAddNote = useCallback(async (form) => {
     try {
@@ -256,6 +266,13 @@ export default function App() {
     switch (tab) {
       case 'record': return (
         <div>
+          <PsychologyPanel
+            trades={trades}
+            pairs={pairNames}
+            spreadCostMap={spreadCostMap}
+            onAddMissed={handleAddMissed}
+            onDeleteTrade={handleDeleteTrade}
+          />
           <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={handleDeleteTrade} />
           <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} spreadCostMap={spreadCostMap} />
         </div>
@@ -294,6 +311,13 @@ export default function App() {
       {tab === "record" && (
         <div>
           <ExportBar onImported={reloadData} />
+          <PsychologyPanel
+            trades={trades}
+            pairs={pairNames}
+            spreadCostMap={spreadCostMap}
+            onAddMissed={handleAddMissed}
+            onDeleteTrade={handleDeleteTrade}
+          />
           <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={handleDeleteTrade} />
           {!showForm && (
             <button
