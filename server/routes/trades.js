@@ -44,7 +44,9 @@ router.post('/', (req, res) => {
       INSERT INTO trades (user_id, date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
-    const result = stmt.run(userId, tradeDate, pair, direction, tradeStrategy, tradeTimeframe, lots || null, entry ?? null, stop ?? null, target || null, exit_price ?? null, gross_pnl ?? null, swap || 0, score || null, emotion || null, notes || null, tradeStatus, risk_amount ?? null)
+    const defaultEntry = tradeStatus === 'missed' ? 0 : entry
+    const defaultStop = tradeStatus === 'missed' ? 0 : stop
+    const result = stmt.run(userId, tradeDate, pair, direction, tradeStrategy, tradeTimeframe, lots || null, defaultEntry ?? null, defaultStop ?? null, target || null, exit_price ?? null, gross_pnl ?? null, swap || 0, score || null, emotion || null, notes || null, tradeStatus, risk_amount ?? null)
     const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(result.lastInsertRowid)
     res.status(201).json(trade)
   } catch (err) {

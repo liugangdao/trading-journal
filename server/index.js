@@ -96,7 +96,8 @@ app.post('/api/import', requireAuth, (req, res) => {
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
         for (const t of trades) {
-          stmt.run(userId, t.date, t.pair, t.direction, t.strategy, t.timeframe, t.lots ?? null, t.entry ?? null, t.stop ?? null, t.target ?? null, t.exit_price ?? null, t.gross_pnl ?? null, t.swap ?? 0, t.score ?? null, t.emotion ?? null, t.notes ?? null, t.status || 'closed', t.risk_amount ?? null, t.created_at || new Date().toISOString(), t.updated_at || new Date().toISOString())
+          const isMissed = t.status === 'missed'
+          stmt.run(userId, t.date, t.pair, t.direction, t.strategy, t.timeframe, t.lots ?? null, isMissed ? (t.entry ?? 0) : (t.entry ?? null), isMissed ? (t.stop ?? 0) : (t.stop ?? null), t.target ?? null, t.exit_price ?? null, t.gross_pnl ?? null, t.swap ?? 0, t.score ?? null, t.emotion ?? null, t.notes ?? null, t.status || 'closed', t.risk_amount ?? null, t.created_at || new Date().toISOString(), t.updated_at || new Date().toISOString())
           result.trades++
         }
       }
