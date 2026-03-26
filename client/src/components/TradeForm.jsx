@@ -13,7 +13,7 @@ export function emptyTrade(pairs) {
     date: today(), pair: pairList[0], direction: "多(Buy)",
     strategy: "趋势跟踪", timeframe: "H4", lots: "", entry: "", stop: "", target: "",
     exit_price: "", gross_pnl: "", swap: "0", score: "B-基本执行", emotion: "冷静理性", notes: "",
-    status: "closed"
+    status: "closed", risk_amount: ""
   }
 }
 
@@ -110,6 +110,9 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
             <Field label="入场价 *" required={isRequired("entry")}><Input value={form.entry} onChange={uf("entry")} placeholder="1.03250" /></Field>
             <Field label="止损价 *" required={isRequired("stop")}><Input value={form.stop} onChange={uf("stop")} placeholder="1.02950" /></Field>
             <Field label="目标价"><Input value={form.target} onChange={uf("target")} placeholder="选填" /></Field>
+            {hideExit && (
+              <Field label="本单风险($)"><Input value={form.risk_amount} onChange={uf("risk_amount")} placeholder="如: 150" /></Field>
+            )}
           </>
         )}
 
