@@ -37,12 +37,24 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
     <div className="space-y-6">
       {/* KPI Row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:flex gap-2 sm:gap-3">
-        <KpiCard label="总交易数" value={stats.total} />
-        <KpiCard label="胜率" value={stats.winRate + "%"} color={stats.winRate >= 50 ? C.green : C.red} />
-        <KpiCard label="净盈亏" value={"$" + stats.totalNet.toFixed(0)} color={stats.totalNet >= 0 ? C.green : C.red} />
-        <KpiCard label="盈亏比" value={stats.profitFactor} color={stats.profitFactor >= 1.5 ? C.green : C.gold} />
-        <KpiCard label="平均R" value={stats.avgR + "R"} color={stats.avgR >= 0 ? C.green : C.red} />
-        <KpiCard label="执行合格率" value={goodScoreRate + "%"} />
+        <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '0ms' }}>
+          <KpiCard label="总交易数" value={stats.total} />
+        </div>
+        <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+          <KpiCard label="胜率" value={stats.winRate + "%"} color={stats.winRate >= 50 ? C.green : C.red} />
+        </div>
+        <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+          <KpiCard label="净盈亏" value={"$" + stats.totalNet.toFixed(0)} color={stats.totalNet >= 0 ? C.green : C.red} />
+        </div>
+        <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+          <KpiCard label="盈亏比" value={stats.profitFactor} color={stats.profitFactor >= 1.5 ? C.green : C.gold} />
+        </div>
+        <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+          <KpiCard label="平均R" value={stats.avgR + "R"} color={stats.avgR >= 0 ? C.green : C.red} />
+        </div>
+        <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '250ms' }}>
+          <KpiCard label="执行合格率" value={goodScoreRate + "%"} />
+        </div>
       </div>
 
       {/* Core + Cost cards */}

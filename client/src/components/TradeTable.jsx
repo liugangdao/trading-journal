@@ -23,10 +23,10 @@ function SortHeader({ col, label, sortKey, sortOrder, onSort }) {
   )
 }
 
-function TradeCard({ trade: t, index, onEdit, onDelete }) {
+function TradeCard({ trade: t, index, animIndex, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   return (
-    <div className="bg-card border border-border rounded-xl p-3 active:scale-[0.97] active:opacity-80 transition-transform duration-100">
+    <div className="bg-card border border-border rounded-xl p-3 active:scale-[0.97] active:opacity-80 transition-transform duration-100 animate-fade-in-up" style={{ animationDelay: `${animIndex * 40}ms` }}>
       <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center gap-2">
           <span className="font-bold text-sm">{t.pair}</span>
@@ -115,7 +115,7 @@ export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) 
       {/* Mobile card view */}
       <div className="sm:hidden space-y-2">
         {paged.map((t, i) => (
-          <TradeCard key={t.id} trade={t} index={(page - 1) * PAGE_SIZE + i + 1} onEdit={onEdit} onDelete={onDelete} />
+          <TradeCard key={t.id} trade={t} index={(page - 1) * PAGE_SIZE + i + 1} animIndex={i} onEdit={onEdit} onDelete={onDelete} />
         ))}
       </div>
 
