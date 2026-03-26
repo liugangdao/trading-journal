@@ -22,6 +22,7 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
   const [form, setForm] = useState(initial || emptyTrade())
   const [error, setError] = useState("")
   const [openOnly, setOpenOnly] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   // Track confirmed (checked) policies — unchecked = violation
   // In edit mode, pre-check policies that were NOT violated
   const [confirmedPolicies, setConfirmedPolicies] = useState(() => {
@@ -53,7 +54,7 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
 
   const requiredFields = isClose ? REQUIRED_CLOSE : hideExit ? REQUIRED_OPEN_ONLY : REQUIRED_FULL
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const missing = requiredFields.filter(k => !form[k] && form[k] !== 0)
     if (missing.length) {
       setError("请填写所有必填字段（带 * 的项）")
@@ -66,7 +67,12 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
     payload.violations = filteredPolicies
       .filter(p => !confirmedPolicies.includes(p.id))
       .map(p => p.id)
-    onSubmit(payload)
+    setSubmitting(true)
+    try {
+      await onSubmit(payload)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const showPreview = !hideExit && form.entry && form.stop && form.exit_price && form.gross_pnl
@@ -217,10 +223,19 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
       )}
 
       <div className="flex gap-3 mt-5">
-        <button onClick={handleSubmit}
-          className="bg-green text-white px-7 py-2.5 rounded-lg text-sm font-semibold cursor-pointer
-            hover:brightness-110 transition-all duration-200">
-          {submitText}
+        <button onClick={handleSubmit} disabled={submitting}
+          className={`text-white px-7 py-2.5 rounded-lg text-sm font-semibold
+            transition-all duration-200
+            ${submitting ? 'bg-muted cursor-not-allowed' : 'bg-green cursor-pointer hover:brightness-110'}`}>
+          {submitting ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              提交中...
+            </span>
+          ) : submitText}
         </button>
         <button onClick={onCancel}
           className="text-muted border border-border px-5 py-2.5 rounded-lg text-sm cursor-pointer
