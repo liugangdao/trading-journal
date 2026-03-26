@@ -9,6 +9,15 @@ export default function MobileSheet({ open, onClose, title, children }) {
       setVisible(true)
       setClosing(false)
       document.body.style.overflow = 'hidden'
+    } else if (visible) {
+      // open changed to false externally (e.g. form submitted) — trigger close animation
+      setClosing(true)
+      const timer = setTimeout(() => {
+        setClosing(false)
+        setVisible(false)
+        document.body.style.overflow = ''
+      }, 250)
+      return () => clearTimeout(timer)
     }
     return () => { document.body.style.overflow = '' }
   }, [open])
