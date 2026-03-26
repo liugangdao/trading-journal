@@ -348,47 +348,49 @@ function AppContent() {
       editing={editing} closingId={closingId}
       mobileTabContent={mobileTabContent}
     >
-      {/* Desktop tab content — unchanged */}
-      {tab === "record" && (
-        <div>
-          <ExportBar onImported={reloadData} />
-          <PsychologyPanel
-            trades={trades}
-            pairs={pairNames}
-            spreadCostMap={spreadCostMap}
-            onAddMissed={handleAddMissed}
-            onDeleteTrade={confirmDeleteTrade}
-          />
-          <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={confirmDeleteTrade} />
-          {!showForm && (
-            <button
-              onClick={() => { setEditing(null); setClosingId(null); setShowForm(true) }}
-              className="bg-accent text-white px-6 py-3 rounded-xl text-sm font-semibold cursor-pointer
-                hover:brightness-110 transition-all duration-200 mb-5">
-              + 记录交易
-            </button>
-          )}
-          {showForm && (
-            <TradeForm
-              key={editing || closingId || 'new'}
-              initial={formInitial}
-              editing={!!editing}
-              mode={formMode}
+      {/* Desktop tab content */}
+      <div key={tab} className="tab-enter">
+        {tab === "record" && (
+          <div>
+            <ExportBar onImported={reloadData} />
+            <PsychologyPanel
+              trades={trades}
               pairs={pairNames}
-              policies={policies}
-              initialViolations={editing ? editViolations : []}
-              onSubmit={closingId ? handleCloseSubmit : handleAddTrade}
-              onCancel={handleCancelForm}
+              spreadCostMap={spreadCostMap}
+              onAddMissed={handleAddMissed}
+              onDeleteTrade={confirmDeleteTrade}
             />
-          )}
-          <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={confirmDeleteTrade} spreadCostMap={spreadCostMap} />
-        </div>
-      )}
-      {tab === "stats" && <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />}
-      {tab === "weekly" && <WeeklyNotes notes={notes} onAdd={handleAddNote} onDelete={confirmDeleteNote} />}
-      {tab === "monthly" && <MonthlyNotes notes={monthlyNotes} onAdd={handleAddMonthlyNote} onDelete={confirmDeleteMonthlyNote} />}
-      {tab === "policy" && <Policies />}
-      {tab === "settings" && <Settings pairs={pairs} onPairsChange={setPairs} />}
+            <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={confirmDeleteTrade} />
+            {!showForm && (
+              <button
+                onClick={() => { setEditing(null); setClosingId(null); setShowForm(true) }}
+                className="bg-accent text-white px-6 py-3 rounded-xl text-sm font-semibold cursor-pointer
+                  hover:brightness-110 transition-all duration-200 mb-5">
+                + 记录交易
+              </button>
+            )}
+            {showForm && (
+              <TradeForm
+                key={editing || closingId || 'new'}
+                initial={formInitial}
+                editing={!!editing}
+                mode={formMode}
+                pairs={pairNames}
+                policies={policies}
+                initialViolations={editing ? editViolations : []}
+                onSubmit={closingId ? handleCloseSubmit : handleAddTrade}
+                onCancel={handleCancelForm}
+              />
+            )}
+            <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={confirmDeleteTrade} spreadCostMap={spreadCostMap} />
+          </div>
+        )}
+        {tab === "stats" && <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />}
+        {tab === "weekly" && <WeeklyNotes notes={notes} onAdd={handleAddNote} onDelete={confirmDeleteNote} />}
+        {tab === "monthly" && <MonthlyNotes notes={monthlyNotes} onAdd={handleAddMonthlyNote} onDelete={confirmDeleteMonthlyNote} />}
+        {tab === "policy" && <Policies />}
+        {tab === "settings" && <Settings pairs={pairs} onPairsChange={setPairs} />}
+      </div>
       <PwaPrompt />
       <ConfirmDialog
         open={confirmState.open}
