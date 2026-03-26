@@ -32,7 +32,8 @@ export function calcTrade(t, spreadCostMap) {
 }
 
 export function calcStats(trades, spreadCostMap) {
-  const computed = trades.map(t => calcTrade(t, spreadCostMap))
+  const activeTrades = trades.filter(t => t.status !== 'missed')
+  const computed = activeTrades.map(t => calcTrade(t, spreadCostMap))
   if (computed.length === 0) return null
 
   const wins = computed.filter(t => t.netPnl > 0)
