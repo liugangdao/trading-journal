@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Input from './ui/Input'
+import EmptyState from './EmptyState'
 
 export default function WeeklyNotes({ notes, onAdd, onDelete }) {
   const [form, setForm] = useState({ week: "", lesson: "", plan: "" })
@@ -50,10 +51,7 @@ export default function WeeklyNotes({ notes, onAdd, onDelete }) {
 
       {/* Notes list */}
       {notes.length === 0 ? (
-        <div className="text-center py-20 text-muted">
-          <div className="text-4xl mb-3 opacity-50">暂无复盘记录</div>
-          <p className="text-sm">每周花15分钟复盘 — 坚持才能进步</p>
-        </div>
+        <EmptyState type="notes" />
       ) : (
         notes.map(n => (
           <div key={n.id} className="bg-card border border-border rounded-xl p-4 mb-3 hover:border-border/80 transition-all duration-200">

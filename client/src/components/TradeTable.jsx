@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { calcTrade } from '../lib/calc'
+import EmptyState from './EmptyState'
 
 const PAGE_SIZE = 20
 
@@ -102,12 +103,7 @@ export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) 
   }
 
   if (computed.length === 0) {
-    return (
-      <div className="text-center py-20 text-muted">
-        <div className="text-4xl mb-3 opacity-50">暂无交易记录</div>
-        <p className="text-sm">点击上方按钮记录你的第一笔交易</p>
-      </div>
-    )
+    return <EmptyState type="trades" />
   }
 
   return (

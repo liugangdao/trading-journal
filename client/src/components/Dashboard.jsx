@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import KpiCard from './ui/KpiCard'
+import EmptyState from './EmptyState'
 import { calcStats } from '../lib/calc'
 import { api } from '../hooks/useApi'
 
@@ -21,12 +22,7 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
   const tooltipStyle = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 }
 
   if (!stats) {
-    return (
-      <div className="text-center py-20 text-muted">
-        <div className="text-4xl mb-3 opacity-50">暂无数据</div>
-        <p className="text-sm">记录交易后将自动生成统计分析</p>
-      </div>
-    )
+    return <EmptyState type="dashboard" />
   }
 
   const goodScoreRate = Math.round(
