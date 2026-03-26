@@ -18,6 +18,7 @@ import PwaPrompt from './components/PwaPrompt'
 import { api } from './hooks/useApi'
 import { useTheme } from './hooks/useTheme'
 import { ToastProvider, useToast } from './components/ui/Toast'
+import ConfirmDialog from './components/ui/ConfirmDialog'
 
 function AppContent() {
   // Auth state: null = checking, false = logged out, object = logged in
@@ -38,6 +39,7 @@ function AppContent() {
   const [loading, setLoading] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const toast = useToast()
+  const [confirmState, setConfirmState] = useState({ open: false, id: null, type: null })
 
   // Check session on mount
   useEffect(() => {
@@ -245,6 +247,27 @@ function AppContent() {
     }
   }, [toast])
 
+  // Delete confirmation
+  const requestDelete = useCallback((id, type) => {
+    setConfirmState({ open: true, id, type })
+  }, [])
+
+  const handleConfirmDelete = useCallback(async () => {
+    const { id, type } = confirmState
+    setConfirmState({ open: false, id: null, type: null })
+    if (type === 'trade') await handleDeleteTrade(id)
+    else if (type === 'note') await handleDeleteNote(id)
+    else if (type === 'monthlyNote') await handleDeleteMonthlyNote(id)
+  }, [confirmState, handleDeleteTrade, handleDeleteNote, handleDeleteMonthlyNote])
+
+  const cancelDelete = useCallback(() => {
+    setConfirmState({ open: false, id: null, type: null })
+  }, [])
+
+  const confirmDeleteTrade = useCallback((id) => requestDelete(id, 'trade'), [requestDelete])
+  const confirmDeleteNote = useCallback((id) => requestDelete(id, 'note'), [requestDelete])
+  const confirmDeleteMonthlyNote = useCallback((id) => requestDelete(id, 'monthlyNote'), [requestDelete])
+
   // Determine form mode and initial data
   const formMode = closingId ? "close" : editing ? "edit" : "new"
   const formInitial = closingId
@@ -289,18 +312,18 @@ function AppContent() {
             pairs={pairNames}
             spreadCostMap={spreadCostMap}
             onAddMissed={handleAddMissed}
-            onDeleteTrade={handleDeleteTrade}
+            onDeleteTrade={confirmDeleteTrade}
           />
-          <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={handleDeleteTrade} />
-          <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} spreadCostMap={spreadCostMap} />
+          <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={confirmDeleteTrade} />
+          <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={confirmDeleteTrade} spreadCostMap={spreadCostMap} />
         </div>
       )
       case 'stats': return <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />
       case 'notes': return (
         <NotesTab
           notes={notes} monthlyNotes={monthlyNotes}
-          onAddNote={handleAddNote} onDeleteNote={handleDeleteNote}
-          onAddMonthlyNote={handleAddMonthlyNote} onDeleteMonthlyNote={handleDeleteMonthlyNote}
+          onAddNote={handleAddNote} onDeleteNote={confirmDeleteNote}
+          onAddMonthlyNote={handleAddMonthlyNote} onDeleteMonthlyNote={confirmDeleteMonthlyNote}
         />
       )
       case 'more': return (
@@ -334,9 +357,9 @@ function AppContent() {
             pairs={pairNames}
             spreadCostMap={spreadCostMap}
             onAddMissed={handleAddMissed}
-            onDeleteTrade={handleDeleteTrade}
+            onDeleteTrade={confirmDeleteTrade}
           />
-          <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={handleDeleteTrade} />
+          <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={confirmDeleteTrade} />
           {!showForm && (
             <button
               onClick={() => { setEditing(null); setClosingId(null); setShowForm(true) }}
@@ -358,15 +381,22 @@ function AppContent() {
               onCancel={handleCancelForm}
             />
           )}
-          <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} spreadCostMap={spreadCostMap} />
+          <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={confirmDeleteTrade} spreadCostMap={spreadCostMap} />
         </div>
       )}
       {tab === "stats" && <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />}
-      {tab === "weekly" && <WeeklyNotes notes={notes} onAdd={handleAddNote} onDelete={handleDeleteNote} />}
-      {tab === "monthly" && <MonthlyNotes notes={monthlyNotes} onAdd={handleAddMonthlyNote} onDelete={handleDeleteMonthlyNote} />}
+      {tab === "weekly" && <WeeklyNotes notes={notes} onAdd={handleAddNote} onDelete={confirmDeleteNote} />}
+      {tab === "monthly" && <MonthlyNotes notes={monthlyNotes} onAdd={handleAddMonthlyNote} onDelete={confirmDeleteMonthlyNote} />}
       {tab === "policy" && <Policies />}
       {tab === "settings" && <Settings pairs={pairs} onPairsChange={setPairs} />}
       <PwaPrompt />
+      <ConfirmDialog
+        open={confirmState.open}
+        title="确认删除"
+        message="删除后无法恢复，确定要继续吗？"
+        onConfirm={handleConfirmDelete}
+        onCancel={cancelDelete}
+      />
     </Layout>
   )
 }
