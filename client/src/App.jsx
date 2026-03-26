@@ -17,8 +17,9 @@ import MoreTab from './components/MoreTab'
 import PwaPrompt from './components/PwaPrompt'
 import { api } from './hooks/useApi'
 import { useTheme } from './hooks/useTheme'
+import { ToastProvider, useToast } from './components/ui/Toast'
 
-export default function App() {
+function AppContent() {
   // Auth state: null = checking, false = logged out, object = logged in
   const [authUser, setAuthUser] = useState(null)
   const [authChecked, setAuthChecked] = useState(false)
@@ -36,6 +37,7 @@ export default function App() {
   const [policies, setPolicies] = useState([])
   const [loading, setLoading] = useState(false)
   const { theme, toggleTheme } = useTheme()
+  const toast = useToast()
 
   // Check session on mount
   useEffect(() => {
@@ -119,10 +121,12 @@ export default function App() {
       }
       setShowForm(false)
       setEditViolations([])
+      toast.success(editing ? '交易已更新' : '交易已记录')
     } catch (err) {
       console.error(err)
+      toast.error('操作失败，请重试')
     }
-  }, [editing])
+  }, [editing, toast])
 
   const handleCloseTrade = useCallback((trade) => {
     setClosingId(trade.id)
@@ -138,10 +142,12 @@ export default function App() {
       await api.updateTradeViolations(closingId, violations || [])
       setClosingId(null)
       setShowForm(false)
+      toast.success('已平仓')
     } catch (err) {
       console.error(err)
+      toast.error('平仓失败，请重试')
     }
-  }, [closingId])
+  }, [closingId, toast])
 
   const handleEditTrade = useCallback(async (trade) => {
     setEditing(trade.id)
@@ -161,10 +167,12 @@ export default function App() {
     try {
       await api.deleteTrade(id)
       setTrades(prev => prev.filter(t => t.id !== id))
+      toast.success('已删除')
     } catch (err) {
       console.error(err)
+      toast.error('删除失败，请重试')
     }
-  }, [])
+  }, [toast])
 
   const handleCancelForm = useCallback(() => {
     setShowForm(false)
@@ -184,48 +192,58 @@ export default function App() {
     try {
       const created = await api.createTrade(form)
       setTrades(prev => [...prev, created])
+      toast.success('踏空记录已添加')
     } catch (err) {
       console.error(err)
+      toast.error('记录失败，请重试')
     }
-  }, [])
+  }, [toast])
 
   // Notes CRUD
   const handleAddNote = useCallback(async (form) => {
     try {
       const created = await api.createNote(form)
       setNotes(prev => [created, ...prev])
+      toast.success('笔记已保存')
     } catch (err) {
       console.error(err)
+      toast.error('保存失败，请重试')
     }
-  }, [])
+  }, [toast])
 
   const handleDeleteNote = useCallback(async (id) => {
     try {
       await api.deleteNote(id)
       setNotes(prev => prev.filter(n => n.id !== id))
+      toast.success('已删除')
     } catch (err) {
       console.error(err)
+      toast.error('删除失败，请重试')
     }
-  }, [])
+  }, [toast])
 
   // Monthly Notes CRUD
   const handleAddMonthlyNote = useCallback(async (form) => {
     try {
       const created = await api.createMonthlyNote(form)
       setMonthlyNotes(prev => [created, ...prev])
+      toast.success('笔记已保存')
     } catch (err) {
       console.error(err)
+      toast.error('保存失败，请重试')
     }
-  }, [])
+  }, [toast])
 
   const handleDeleteMonthlyNote = useCallback(async (id) => {
     try {
       await api.deleteMonthlyNote(id)
       setMonthlyNotes(prev => prev.filter(n => n.id !== id))
+      toast.success('已删除')
     } catch (err) {
       console.error(err)
+      toast.error('删除失败，请重试')
     }
-  }, [])
+  }, [toast])
 
   // Determine form mode and initial data
   const formMode = closingId ? "close" : editing ? "edit" : "new"
@@ -350,5 +368,13 @@ export default function App() {
       {tab === "settings" && <Settings pairs={pairs} onPairsChange={setPairs} />}
       <PwaPrompt />
     </Layout>
+  )
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   )
 }
