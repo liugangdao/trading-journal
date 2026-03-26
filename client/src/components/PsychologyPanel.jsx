@@ -23,7 +23,10 @@ export default function PsychologyPanel({ trades, pairs, spreadCostMap, onAddMis
     todayOpenTrades.reduce((sum, t) => sum + (parseFloat(t.risk_amount) || 0), 0),
     [todayOpenTrades]
   )
-  const todayTickets = todayOpenTrades.filter(t => parseFloat(t.risk_amount) > 0).length
+  const todayTickets = useMemo(() =>
+    todayOpenTrades.filter(t => parseFloat(t.risk_amount) > 0).length,
+    [todayOpenTrades]
+  )
 
   // Win rate from closed trades
   const closedTrades = useMemo(() => trades.filter(t => t.status === 'closed'), [trades])
