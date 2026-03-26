@@ -18,27 +18,33 @@ router.get('/', (req, res) => {
   }
 })
 
-// POST /api/trades - create trade (open or closed)
+// POST /api/trades - create trade (open, closed, or missed)
 router.post('/', (req, res) => {
   try {
     const userId = req.session.userId
-    const { date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status } = req.body
+    const { date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount } = req.body
     const tradeStatus = status || 'open'
     const tradeDate = date || new Date().toISOString().split('T')[0]
     const tradeStrategy = strategy || '趋势跟踪'
     const tradeTimeframe = timeframe || 'H4'
 
-    if (!pair || !direction || entry == null || stop == null) {
-      return res.status(400).json({ error: 'Missing required fields: pair, direction, entry, stop' })
-    }
-    if (tradeStatus === 'closed' && (exit_price == null || gross_pnl == null)) {
-      return res.status(400).json({ error: 'Closed trades require exit_price and gross_pnl' })
+    if (tradeStatus === 'missed') {
+      if (!pair || !direction) {
+        return res.status(400).json({ error: 'Missing required fields: pair, direction' })
+      }
+    } else {
+      if (!pair || !direction || entry == null || stop == null) {
+        return res.status(400).json({ error: 'Missing required fields: pair, direction, entry, stop' })
+      }
+      if (tradeStatus === 'closed' && (exit_price == null || gross_pnl == null)) {
+        return res.status(400).json({ error: 'Closed trades require exit_price and gross_pnl' })
+      }
     }
     const stmt = db.prepare(`
-      INSERT INTO trades (user_id, date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO trades (user_id, date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
-    const result = stmt.run(userId, tradeDate, pair, direction, tradeStrategy, tradeTimeframe, lots || null, entry, stop, target || null, exit_price ?? null, gross_pnl ?? null, swap || 0, score || null, emotion || null, notes || null, tradeStatus)
+    const result = stmt.run(userId, tradeDate, pair, direction, tradeStrategy, tradeTimeframe, lots || null, entry ?? null, stop ?? null, target || null, exit_price ?? null, gross_pnl ?? null, swap || 0, score || null, emotion || null, notes || null, tradeStatus, risk_amount ?? null)
     const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(result.lastInsertRowid)
     res.status(201).json(trade)
   } catch (err) {
@@ -50,17 +56,21 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   try {
     const userId = req.session.userId
-    const { date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status } = req.body
+    const { date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount } = req.body
     const existing = db.prepare('SELECT * FROM trades WHERE id = ? AND user_id = ?').get(req.params.id, userId)
     if (!existing) return res.status(404).json({ error: 'Trade not found' })
 
     const tradeStatus = status || existing.status
+    if ((existing.status === 'missed' && tradeStatus !== 'missed') ||
+        (existing.status !== 'missed' && tradeStatus === 'missed')) {
+      return res.status(400).json({ error: 'Cannot convert between missed and open/closed status' })
+    }
     if (tradeStatus === 'closed' && (exit_price == null || gross_pnl == null)) {
       return res.status(400).json({ error: 'Closed trades require exit_price and gross_pnl' })
     }
 
     const stmt = db.prepare(`
-      UPDATE trades SET date=?, pair=?, direction=?, strategy=?, timeframe=?, lots=?, entry=?, stop=?, target=?, exit_price=?, gross_pnl=?, swap=?, score=?, emotion=?, notes=?, status=?, updated_at=datetime('now')
+      UPDATE trades SET date=?, pair=?, direction=?, strategy=?, timeframe=?, lots=?, entry=?, stop=?, target=?, exit_price=?, gross_pnl=?, swap=?, score=?, emotion=?, notes=?, status=?, risk_amount=?, updated_at=datetime('now')
       WHERE id=? AND user_id=?
     `)
     stmt.run(
@@ -69,7 +79,7 @@ router.put('/:id', (req, res) => {
       entry ?? existing.entry, stop ?? existing.stop, target || existing.target,
       exit_price ?? null, gross_pnl ?? null, swap || 0,
       score || null, emotion || null, notes || null,
-      tradeStatus, req.params.id, userId
+      tradeStatus, risk_amount ?? existing.risk_amount, req.params.id, userId
     )
     const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(req.params.id)
     res.json(trade)
