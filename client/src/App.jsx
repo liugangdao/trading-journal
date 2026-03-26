@@ -18,6 +18,7 @@ import PwaPrompt from './components/PwaPrompt'
 import { api } from './hooks/useApi'
 import { useTheme } from './hooks/useTheme'
 import { ToastProvider, useToast } from './components/ui/Toast'
+import { SkeletonKpi, SkeletonCard, SkeletonChart } from './components/ui/Skeleton'
 import ConfirmDialog from './components/ui/ConfirmDialog'
 
 function AppContent() {
@@ -296,8 +297,25 @@ function AppContent() {
   // Logged in - loading data
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center text-muted">
-        加载中...
+      <div className="min-h-screen bg-bg text-text font-sans">
+        <div className="bg-card border-b border-border px-6 py-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="h-5 w-24 bg-border/60 rounded animate-pulse mb-1" />
+            <div className="h-3 w-48 bg-border/40 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
+          <div className="flex gap-3 flex-wrap mb-6">
+            <SkeletonKpi />
+            <SkeletonKpi />
+            <SkeletonKpi />
+            <SkeletonKpi />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SkeletonChart />
+            <SkeletonChart />
+          </div>
+        </div>
       </div>
     )
   }
