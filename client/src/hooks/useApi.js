@@ -28,7 +28,15 @@ export const api = {
   getMe: () => request('/auth/me'),
 
   // Trades
-  getTrades: () => request('/trades'),
+  getTrades: (params) => {
+    if (!params) return request('/trades')
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) {
+      if (v != null && v !== '') qs.set(k, v)
+    }
+    const str = qs.toString()
+    return request(`/trades${str ? '?' + str : ''}`)
+  },
   createTrade: (data) => request('/trades', { method: 'POST', body: JSON.stringify(data) }),
   updateTrade: (id, data) => request(`/trades/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteTrade: (id) => request(`/trades/${id}`, { method: 'DELETE' }),
