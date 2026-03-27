@@ -4,11 +4,13 @@ export default function MobileSheet({ open, onClose, title, children }) {
   const [closing, setClosing] = useState(false)
   const [visible, setVisible] = useState(false)
 
+  const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 640
+
   useEffect(() => {
     if (open) {
       setVisible(true)
       setClosing(false)
-      document.body.style.overflow = 'hidden'
+      if (isMobile()) document.body.style.overflow = 'hidden'
     } else if (visible) {
       // open changed to false externally (e.g. form submitted) — trigger close animation
       setClosing(true)
