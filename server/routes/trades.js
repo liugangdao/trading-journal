@@ -3,16 +3,52 @@ import db from '../db.js'
 
 const router = Router()
 
-// GET /api/trades - list all trades
+// GET /api/trades - list trades with optional filtering and pagination
 router.get('/', (req, res) => {
   try {
     const userId = req.session.userId
-    const sort = req.query.sort || 'date'
-    const order = req.query.order === 'asc' ? 'ASC' : 'DESC'
-    const allowed = ['id', 'date', 'pair', 'gross_pnl', 'created_at']
-    const sortCol = allowed.includes(sort) ? sort : 'date'
-    const trades = db.prepare(`SELECT * FROM trades WHERE user_id = ? ORDER BY ${sortCol} ${order}, id ${order}`).all(userId)
-    res.json(trades)
+    const { date_from, date_to, pair, direction, sort, order, limit, offset } = req.query
+
+    const sortOrder = order === 'asc' ? 'ASC' : 'DESC'
+    const allowed = ['id', 'open_time', 'pair', 'gross_pnl', 'created_at']
+    const sortCol = allowed.includes(sort) ? sort : 'open_time'
+
+    const conditions = ['user_id = ?']
+    const params = [userId]
+
+    if (date_from) {
+      conditions.push('open_time >= ?')
+      params.push(date_from + 'T00:00')
+    }
+    if (date_to) {
+      conditions.push('open_time <= ?')
+      params.push(date_to + 'T23:59')
+    }
+    if (pair) {
+      conditions.push('pair = ?')
+      params.push(pair)
+    }
+    if (direction) {
+      conditions.push('direction = ?')
+      params.push(direction)
+    }
+
+    const where = conditions.join(' AND ')
+    const total = db.prepare(`SELECT COUNT(*) as total FROM trades WHERE ${where}`).get(...params).total
+
+    let sql = `SELECT * FROM trades WHERE ${where} ORDER BY ${sortCol} ${sortOrder}, id ${sortOrder}`
+    const parsedLimit = parseInt(limit)
+    const parsedOffset = parseInt(offset) || 0
+
+    let trades
+    if (parsedLimit > 0) {
+      sql += ' LIMIT ? OFFSET ?'
+      trades = db.prepare(sql).all(...params, parsedLimit, parsedOffset)
+    } else {
+      trades = db.prepare(sql).all(...params)
+    }
+
+    res.json({ trades, total, limit: parsedLimit || 0, offset: parsedOffset })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -22,9 +58,11 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const userId = req.session.userId
-    const { date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount } = req.body
+    const { open_time, close_time, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount } = req.body
     const tradeStatus = status || 'open'
-    const tradeDate = date || new Date().toISOString().split('T')[0]
+    const now = new Date()
+    const tradeOpenTime = open_time || `${now.toISOString().split('T')[0]}T${now.toTimeString().slice(0,5)}`
+    const tradeCloseTime = close_time || null
     const tradeStrategy = strategy || '趋势跟踪'
     const tradeTimeframe = timeframe || 'H4'
 
@@ -41,12 +79,12 @@ router.post('/', (req, res) => {
       }
     }
     const stmt = db.prepare(`
-      INSERT INTO trades (user_id, date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO trades (user_id, open_time, close_time, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     const defaultEntry = tradeStatus === 'missed' ? 0 : entry
     const defaultStop = tradeStatus === 'missed' ? 0 : stop
-    const result = stmt.run(userId, tradeDate, pair, direction, tradeStrategy, tradeTimeframe, lots || null, defaultEntry ?? null, defaultStop ?? null, target || null, exit_price ?? null, gross_pnl ?? null, swap || 0, score || null, emotion || null, notes || null, tradeStatus, risk_amount ?? null)
+    const result = stmt.run(userId, tradeOpenTime, tradeCloseTime, pair, direction, tradeStrategy, tradeTimeframe, lots || null, defaultEntry ?? null, defaultStop ?? null, target || null, exit_price ?? null, gross_pnl ?? null, swap || 0, score || null, emotion || null, notes || null, tradeStatus, risk_amount ?? null)
     const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(result.lastInsertRowid)
     res.status(201).json(trade)
   } catch (err) {
@@ -58,7 +96,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   try {
     const userId = req.session.userId
-    const { date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount } = req.body
+    const { open_time, close_time, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount } = req.body
     const existing = db.prepare('SELECT * FROM trades WHERE id = ? AND user_id = ?').get(req.params.id, userId)
     if (!existing) return res.status(404).json({ error: 'Trade not found' })
 
@@ -72,11 +110,12 @@ router.put('/:id', (req, res) => {
     }
 
     const stmt = db.prepare(`
-      UPDATE trades SET date=?, pair=?, direction=?, strategy=?, timeframe=?, lots=?, entry=?, stop=?, target=?, exit_price=?, gross_pnl=?, swap=?, score=?, emotion=?, notes=?, status=?, risk_amount=?, updated_at=datetime('now')
+      UPDATE trades SET open_time=?, close_time=?, pair=?, direction=?, strategy=?, timeframe=?, lots=?, entry=?, stop=?, target=?, exit_price=?, gross_pnl=?, swap=?, score=?, emotion=?, notes=?, status=?, risk_amount=?, updated_at=datetime('now')
       WHERE id=? AND user_id=?
     `)
     stmt.run(
-      date ?? existing.date, pair ?? existing.pair, direction ?? existing.direction,
+      open_time ?? existing.open_time, close_time !== undefined ? close_time : existing.close_time,
+      pair ?? existing.pair, direction ?? existing.direction,
       strategy ?? existing.strategy, timeframe ?? existing.timeframe, lots || existing.lots,
       entry ?? existing.entry, stop ?? existing.stop, target || existing.target,
       exit_price ?? null, gross_pnl ?? null, swap || 0,
