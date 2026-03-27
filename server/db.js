@@ -27,7 +27,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS trades (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
-    date TEXT NOT NULL,
+    open_time TEXT NOT NULL,
+    close_time TEXT,
     pair TEXT NOT NULL,
     direction TEXT NOT NULL,
     strategy TEXT NOT NULL,
@@ -220,6 +221,43 @@ if (pairIndexes && pairIndexes.sql && pairIndexes.sql.includes('UNIQUE')) {
 const tradeColsRisk = db.prepare("PRAGMA table_info(trades)").all()
 if (!tradeColsRisk.some(c => c.name === 'risk_amount')) {
   db.exec("ALTER TABLE trades ADD COLUMN risk_amount REAL DEFAULT NULL")
+}
+
+// Migration: rename date → open_time, add close_time
+const tradeColsTime = db.prepare("PRAGMA table_info(trades)").all()
+const hasDate = tradeColsTime.some(c => c.name === 'date')
+const hasOpenTime = tradeColsTime.some(c => c.name === 'open_time')
+if (hasDate && !hasOpenTime) {
+  db.exec(`
+    ALTER TABLE trades RENAME TO trades_old_time;
+    CREATE TABLE trades (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id),
+      open_time TEXT NOT NULL,
+      close_time TEXT,
+      pair TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      strategy TEXT NOT NULL,
+      timeframe TEXT NOT NULL,
+      lots REAL,
+      entry REAL NOT NULL,
+      stop REAL NOT NULL,
+      target REAL,
+      exit_price REAL,
+      gross_pnl REAL,
+      swap REAL DEFAULT 0,
+      score TEXT,
+      emotion TEXT,
+      notes TEXT,
+      status TEXT NOT NULL DEFAULT 'closed',
+      risk_amount REAL DEFAULT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    INSERT INTO trades (id, user_id, open_time, close_time, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount, created_at, updated_at)
+      SELECT id, user_id, date || 'T00:00', NULL, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount, created_at, updated_at FROM trades_old_time;
+    DROP TABLE trades_old_time;
+  `)
 }
 
 export default db
