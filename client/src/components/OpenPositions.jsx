@@ -1,3 +1,18 @@
+function formatDuration(openTime) {
+  if (!openTime) return ''
+  const start = new Date(openTime)
+  const now = new Date()
+  const diffMs = now - start
+  if (diffMs < 0) return ''
+  const hours = Math.floor(diffMs / (1000 * 60 * 60))
+  const days = Math.floor(hours / 24)
+  const remainHours = hours % 24
+  if (days > 0) return `${days}天${remainHours}小时`
+  const minutes = Math.floor((diffMs / (1000 * 60)) % 60)
+  if (hours > 0) return `${hours}小时${minutes}分钟`
+  return `${minutes}分钟`
+}
+
 export default function OpenPositions({ openTrades, onClose, onDelete }) {
   if (!openTrades || openTrades.length === 0) return null
 
@@ -16,7 +31,7 @@ export default function OpenPositions({ openTrades, onClose, onDelete }) {
                   {trade.direction}
                 </span>
               </div>
-              <span className="text-[11px] text-muted">{trade.date}</span>
+              <span className="text-[11px] text-muted">{formatDuration(trade.open_time)}</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-xs mb-3">
