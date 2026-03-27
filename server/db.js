@@ -260,4 +260,22 @@ if (hasDate && !hasOpenTime) {
   `)
 }
 
+// Migration: fix trade_violations foreign key after trades table rebuild
+const tvSchema = db.prepare("SELECT sql FROM sqlite_master WHERE name='trade_violations'").get()
+if (tvSchema && tvSchema.sql && tvSchema.sql.includes('trades_old_time')) {
+  db.exec(`
+    ALTER TABLE trade_violations RENAME TO trade_violations_old;
+    CREATE TABLE trade_violations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      trade_id INTEGER NOT NULL REFERENCES trades(id) ON DELETE CASCADE,
+      policy_id INTEGER NOT NULL REFERENCES policies(id) ON DELETE CASCADE,
+      notes TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    INSERT INTO trade_violations (id, trade_id, policy_id, notes, created_at)
+      SELECT id, trade_id, policy_id, notes, created_at FROM trade_violations_old;
+    DROP TABLE trade_violations_old;
+  `)
+}
+
 export default db
