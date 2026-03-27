@@ -1,6 +1,6 @@
 import { useCountUp } from '../../hooks/useCountUp'
 
-export default function KpiCard({ label, value, color, sub }) {
+export default function KpiCard({ label, value, color, sub, comparison }) {
   const numericValue = parseFloat(String(value).replace(/[^0-9.\-]/g, ''))
   const isNumeric = !isNaN(numericValue) && isFinite(numericValue)
   const prefix = typeof value === 'string' ? value.match(/^[^0-9.\-]*/)?.[0] || '' : ''
@@ -22,7 +22,15 @@ export default function KpiCard({ label, value, color, sub }) {
       <div className="text-2xl font-bold font-mono" style={{ color: color || undefined }}>
         {displayValue}
       </div>
-      {sub && <div className="text-[10px] text-muted mt-1">{sub}</div>}
+      {comparison && (
+        <div className={`text-[10px] mt-1 font-medium ${
+          comparison.direction === 'up' ? 'text-green' :
+          comparison.direction === 'down' ? 'text-red' : 'text-muted'
+        }`}>
+          {comparison.direction === 'up' ? '↑' : comparison.direction === 'down' ? '↓' : '→'} vs上周 {comparison.value}
+        </div>
+      )}
+      {!comparison && sub && <div className="text-[10px] text-muted mt-1">{sub}</div>}
     </div>
   )
 }
