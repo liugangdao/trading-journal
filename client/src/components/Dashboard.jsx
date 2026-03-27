@@ -1,15 +1,36 @@
 import { useMemo, useState, useEffect } from 'react'
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import KpiCard from './ui/KpiCard'
+import Disclosure from './ui/Disclosure'
 import EmptyState from './EmptyState'
+import StreakKpis from './StreakKpis'
+import WeeklyTrend from './WeeklyTrend'
 import { calcStats } from '../lib/calc'
 import { api } from '../hooks/useApi'
-
-const CHART_COLORS = ["#3b82f6","#10b981","#ef4444","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#84cc16"]
 
 const THEME_COLORS = {
   light: { card: '#ffffff', border: '#e2e8f0', muted: '#94a3b8', accent: '#3b82f6', green: '#16a34a', red: '#dc2626', gold: '#d97706' },
   dark:  { card: '#111827', border: '#1e293b', muted: '#64748b', accent: '#3b82f6', green: '#10b981', red: '#ef4444', gold: '#f59e0b' },
+}
+
+function isoWeek(dateStr) {
+  const d = new Date(dateStr)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7))
+  const week1 = new Date(d.getFullYear(), 0, 4)
+  const weekNum = 1 + Math.round(((d - week1) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7)
+  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`
+}
+
+function getComparison(current, previous) {
+  if (previous == null || current == null) return null
+  const diff = current - previous
+  const pct = previous !== 0 ? Math.abs(diff / previous) : 0
+  let direction = 'same'
+  if (pct >= 0.05 || Math.abs(diff) > 0.5) {
+    direction = diff > 0 ? 'up' : 'down'
+  }
+  return { value: typeof previous === 'number' && previous % 1 !== 0 ? previous.toFixed(2) : previous, direction }
 }
 
 export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
@@ -21,6 +42,24 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
   }, [])
   const tooltipStyle = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 }
 
+  const currentWeek = isoWeek(new Date().toISOString())
+  const lastWeekDate = new Date()
+  lastWeekDate.setDate(lastWeekDate.getDate() - 7)
+  const lastWeek = isoWeek(lastWeekDate.toISOString())
+
+  const thisWeekTrades = useMemo(() =>
+    trades.filter(t => t.status === 'closed' && t.open_time && isoWeek(t.open_time) === currentWeek),
+    [trades, currentWeek]
+  )
+  const lastWeekTrades = useMemo(() =>
+    trades.filter(t => t.status === 'closed' && t.open_time && isoWeek(t.open_time) === lastWeek),
+    [trades, lastWeek]
+  )
+  const thisWeekStats = useMemo(() => calcStats(thisWeekTrades, spreadCostMap), [thisWeekTrades, spreadCostMap])
+  const lastWeekStats = useMemo(() => calcStats(lastWeekTrades, spreadCostMap), [lastWeekTrades, spreadCostMap])
+
+  const showComparison = thisWeekStats && lastWeekStats
+
   if (!stats) {
     return <EmptyState type="dashboard" />
   }
@@ -29,31 +68,47 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
     stats.computed.filter(t => t.score?.startsWith("A") || t.score?.startsWith("B")).length / stats.computed.length * 100
   )
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
+  const analysisData = [
+    { title: '情绪分析', data: stats.byEmo, defaultOpen: !isMobile },
+    { title: '策略分析', data: stats.byStrat, defaultOpen: !isMobile },
+    { title: '品种分析', data: stats.byPair, defaultOpen: false },
+    { title: '星期分析', data: stats.byDay, defaultOpen: false },
+    { title: '周期分析', data: stats.byTf, defaultOpen: false },
+  ]
+
   return (
     <div className="space-y-6">
-      {/* KPI Row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:flex gap-2 sm:gap-3">
         <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '0ms' }}>
-          <KpiCard label="总交易数" value={stats.total} />
+          <KpiCard label="总交易数" value={stats.total}
+            comparison={showComparison ? getComparison(thisWeekStats.total, lastWeekStats.total) : null} />
         </div>
         <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '50ms' }}>
-          <KpiCard label="胜率" value={stats.winRate + "%"} color={stats.winRate >= 50 ? C.green : C.red} />
+          <KpiCard label="胜率" value={stats.winRate + "%"} color={stats.winRate >= 50 ? C.green : C.red}
+            comparison={showComparison ? getComparison(thisWeekStats.winRate, lastWeekStats.winRate) : null} />
         </div>
         <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-          <KpiCard label="净盈亏" value={"$" + stats.totalNet.toFixed(0)} color={stats.totalNet >= 0 ? C.green : C.red} />
+          <KpiCard label="净盈亏" value={"$" + stats.totalNet.toFixed(0)} color={stats.totalNet >= 0 ? C.green : C.red}
+            comparison={showComparison ? getComparison(thisWeekStats.totalNet, lastWeekStats.totalNet) : null} />
         </div>
         <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '150ms' }}>
-          <KpiCard label="盈亏比" value={stats.profitFactor} color={stats.profitFactor >= 1.5 ? C.green : C.gold} />
+          <KpiCard label="盈亏比" value={stats.profitFactor} color={stats.profitFactor >= 1.5 ? C.green : C.gold}
+            comparison={showComparison ? getComparison(thisWeekStats.profitFactor, lastWeekStats.profitFactor) : null} />
         </div>
         <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-          <KpiCard label="平均R" value={stats.avgR + "R"} color={stats.avgR >= 0 ? C.green : C.red} />
+          <KpiCard label="平均R" value={stats.avgR + "R"} color={stats.avgR >= 0 ? C.green : C.red}
+            comparison={showComparison ? getComparison(thisWeekStats.avgR, lastWeekStats.avgR) : null} />
         </div>
         <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '250ms' }}>
           <KpiCard label="执行合格率" value={goodScoreRate + "%"} />
         </div>
       </div>
 
-      {/* Core + Cost cards */}
+      <StreakKpis stats={stats} />
+
+      <WeeklyTrend weeklyTrend={stats.weeklyTrend} theme={theme} />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card title="核心指标">
           {[["盈利笔数", stats.wins], ["亏损笔数", stats.losses], ["平均盈利", "$" + stats.avgWin.toFixed(2)], ["平均亏损", "$" + stats.avgLoss.toFixed(2)]].map(([k, v]) => (
@@ -67,7 +122,6 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
         </Card>
       </div>
 
-      {/* Cumulative PnL */}
       {stats.cumData.length > 1 && (
         <Card title="累计净盈亏曲线">
           <ResponsiveContainer width="100%" height={220}>
@@ -82,61 +136,14 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
         </Card>
       )}
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card title="品种盈亏分布">
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={stats.byPair} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-              <XAxis type="number" stroke={C.muted} fontSize={10} tickFormatter={v => "$" + v} />
-              <YAxis type="category" dataKey="name" stroke={C.muted} fontSize={10} width={65} />
-              <Tooltip contentStyle={tooltipStyle} formatter={v => "$" + v} />
-              <Bar dataKey="pnl" radius={[0, 4, 4, 0]}>
-                {stats.byPair.map((e, i) => <Cell key={i} fill={e.pnl >= 0 ? C.green : C.red} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-        <Card title="情绪分布">
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie data={stats.byEmo} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={70}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
-                {stats.byEmo.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={tooltipStyle} />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      {/* Detail Tables */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[["策略分析", stats.byStrat], ["星期分析", stats.byDay], ["周期分析", stats.byTf], ["情绪与盈亏", stats.byEmo]].map(([title, data]) => (
-          <Card key={title} title={title}>
-            <table className="w-full text-[11px]">
-              <thead>
-                <tr>{["名称","笔数","胜率","盈亏","平均R"].map(h => (
-                  <th key={h} className="px-2 py-1.5 text-left text-muted font-semibold border-b border-border text-[10px]">{h}</th>
-                ))}</tr>
-              </thead>
-              <tbody>
-                {data.map(d => (
-                  <tr key={d.name} className="border-b border-border/30">
-                    <td className="px-2 py-1.5 font-semibold">{d.name}</td>
-                    <td className="px-2 py-1.5">{d.count}</td>
-                    <td className={`px-2 py-1.5 ${d.winRate >= 50 ? 'text-green' : 'text-red'}`}>{d.winRate}%</td>
-                    <td className={`px-2 py-1.5 font-mono ${d.pnl >= 0 ? 'text-green' : 'text-red'}`}>${d.pnl}</td>
-                    <td className="px-2 py-1.5 font-mono">{d.avgR}R</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+      <div className="space-y-3">
+        {analysisData.map(({ title, data, defaultOpen }) => (
+          <Disclosure key={title} title={title} defaultOpen={defaultOpen}>
+            <AnalysisTable data={data} />
+          </Disclosure>
         ))}
       </div>
 
-      {/* Violation Analysis */}
       {violationStats && violationStats.totalViolations > 0 && (
         <div className="mt-8">
           <h3 className="text-base font-bold mb-4">违规分析</h3>
@@ -178,6 +185,31 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
         </div>
       )}
     </div>
+  )
+}
+
+function AnalysisTable({ data }) {
+  if (!data || data.length === 0) return <div className="text-xs text-muted">暂无数据</div>
+  const sorted = [...data].sort((a, b) => b.pnl - a.pnl)
+  return (
+    <table className="w-full text-[11px]">
+      <thead>
+        <tr>{["名称","交易数","胜率","净盈亏","平均R"].map(h => (
+          <th key={h} className="px-2 py-1.5 text-left text-muted font-semibold border-b border-border text-[10px]">{h}</th>
+        ))}</tr>
+      </thead>
+      <tbody>
+        {sorted.map(d => (
+          <tr key={d.name} className={`border-b border-border/30 ${d.count < 2 ? 'opacity-50' : ''}`}>
+            <td className="px-2 py-1.5 font-semibold">{d.name}</td>
+            <td className="px-2 py-1.5">{d.count}</td>
+            <td className={`px-2 py-1.5 ${d.winRate >= 50 ? 'text-green' : 'text-red'}`}>{d.winRate}%</td>
+            <td className={`px-2 py-1.5 font-mono ${d.pnl >= 0 ? 'text-green' : 'text-red'}`}>${d.pnl}</td>
+            <td className="px-2 py-1.5 font-mono">{d.avgR}R</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
