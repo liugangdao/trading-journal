@@ -10,6 +10,7 @@ import MonthlyNotes from './components/MonthlyNotes'
 import OpenPositions from './components/OpenPositions'
 import PsychologyPanel from './components/PsychologyPanel'
 import ExportBar from './components/ExportBar'
+import TradeFilter from './components/TradeFilter'
 import Settings from './components/Settings'
 import Policies from './components/Policies'
 import NotesTab from './components/NotesTab'
@@ -27,7 +28,10 @@ function AppContent() {
   const [authChecked, setAuthChecked] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
 
-  const [trades, setTrades] = useState([])
+  const [allTrades, setAllTrades] = useState([])
+  const [pagedTrades, setPagedTrades] = useState([])
+  const [tradePagination, setTradePagination] = useState({ total: 0, limit: 20, offset: 0 })
+  const [tradeFilter, setTradeFilter] = useState({ date_from: null, date_to: null, pair: null, direction: null })
   const [notes, setNotes] = useState([])
   const [monthlyNotes, setMonthlyNotes] = useState([])
   const [tab, setTab] = useState("stats")
@@ -64,17 +68,33 @@ function AppContent() {
   }, [])
 
   // Load data when authenticated
+  const fetchPagedTrades = useCallback((filter, offset = 0) => {
+    const params = { limit: 20, offset, sort: 'open_time', order: 'desc' }
+    if (filter.date_from) params.date_from = filter.date_from
+    if (filter.date_to) params.date_to = filter.date_to
+    if (filter.pair) params.pair = filter.pair
+    if (filter.direction) params.direction = filter.direction
+    return api.getTrades(params).then(result => {
+      setPagedTrades(result.trades)
+      setTradePagination({ total: result.total, limit: result.limit, offset: result.offset })
+    })
+  }, [])
+
   const reloadData = useCallback(() => {
-    return Promise.all([api.getTrades(), api.getNotes(), api.getMonthlyNotes(), api.getPairs(), api.getPolicies()])
-      .then(([t, n, mn, p, pol]) => { setTrades(t); setNotes(n); setMonthlyNotes(mn); setPairs(p); setPolicies(pol) })
-      .catch(console.error)
+    return Promise.all([
+      api.getTrades(),
+      api.getNotes(), api.getMonthlyNotes(), api.getPairs(), api.getPolicies()
+    ]).then(([allResult, n, mn, p, pol]) => {
+      setAllTrades(allResult.trades)
+      setNotes(n); setMonthlyNotes(mn); setPairs(p); setPolicies(pol)
+    }).catch(console.error)
   }, [])
 
   useEffect(() => {
     if (!authUser) return
     setLoading(true)
-    reloadData().finally(() => setLoading(false))
-  }, [authUser, reloadData])
+    Promise.all([reloadData(), fetchPagedTrades(tradeFilter)]).finally(() => setLoading(false))
+  }, [authUser, reloadData, fetchPagedTrades])
 
   // Auth handlers
   const handleAuth = useCallback((user) => {
@@ -89,16 +109,28 @@ function AppContent() {
       console.error(err)
     }
     setAuthUser(false)
-    setTrades([])
+    setAllTrades([])
+    setPagedTrades([])
+    setTradePagination({ total: 0, limit: 20, offset: 0 })
+    setTradeFilter({ date_from: null, date_to: null, pair: null, direction: null })
     setNotes([])
     setMonthlyNotes([])
     setPairs([])
     setPolicies([])
   }, [])
 
+  const handleFilterChange = useCallback((newFilter) => {
+    setTradeFilter(newFilter)
+    fetchPagedTrades(newFilter, 0)
+  }, [fetchPagedTrades])
+
+  const handlePageChange = useCallback((newOffset) => {
+    fetchPagedTrades(tradeFilter, newOffset)
+  }, [tradeFilter, fetchPagedTrades])
+
   // Derived data
-  const openTrades = useMemo(() => trades.filter(t => t.status === 'open'), [trades])
-  const closedTrades = useMemo(() => trades.filter(t => t.status === 'closed'), [trades])
+  const openTrades = useMemo(() => allTrades.filter(t => t.status === 'open'), [allTrades])
+  const closedTrades = useMemo(() => allTrades.filter(t => t.status === 'closed'), [allTrades])
   const spreadCostMap = useMemo(() => {
     const map = {}
     pairs.forEach(p => { map[p.name] = p.spread_cost })
@@ -111,19 +143,19 @@ function AppContent() {
     try {
       const { violations, ...tradeData } = form
       if (editing) {
-        const updated = await api.updateTrade(editing, tradeData)
-        setTrades(prev => prev.map(t => t.id === editing ? updated : t))
+        await api.updateTrade(editing, tradeData)
         await api.updateTradeViolations(editing, violations || [])
         setEditing(null)
       } else {
         const created = await api.createTrade(tradeData)
-        setTrades(prev => [...prev, created])
         if (violations && violations.length > 0) {
           await api.updateTradeViolations(created.id, violations)
         }
       }
       setShowForm(false)
       setEditViolations([])
+      reloadData()
+      fetchPagedTrades(tradeFilter, tradePagination.offset)
       toast.success(editing ? '交易已更新' : '交易已记录')
     } catch (err) {
       console.error(err)
@@ -140,11 +172,12 @@ function AppContent() {
   const handleCloseSubmit = useCallback(async (form) => {
     try {
       const { violations, ...tradeData } = form
-      const updated = await api.updateTrade(closingId, { ...tradeData, status: 'closed' })
-      setTrades(prev => prev.map(t => t.id === closingId ? updated : t))
+      await api.updateTrade(closingId, { ...tradeData, status: 'closed' })
       await api.updateTradeViolations(closingId, violations || [])
       setClosingId(null)
       setShowForm(false)
+      reloadData()
+      fetchPagedTrades(tradeFilter, tradePagination.offset)
       toast.success('已平仓')
     } catch (err) {
       console.error(err)
@@ -169,7 +202,8 @@ function AppContent() {
   const handleDeleteTrade = useCallback(async (id) => {
     try {
       await api.deleteTrade(id)
-      setTrades(prev => prev.filter(t => t.id !== id))
+      reloadData()
+      fetchPagedTrades(tradeFilter, tradePagination.offset)
       toast.success('已删除')
     } catch (err) {
       console.error(err)
@@ -193,8 +227,9 @@ function AppContent() {
 
   const handleAddMissed = useCallback(async (form) => {
     try {
-      const created = await api.createTrade(form)
-      setTrades(prev => [...prev, created])
+      await api.createTrade(form)
+      reloadData()
+      fetchPagedTrades(tradeFilter, tradePagination.offset)
       toast.success('踏空记录已添加')
     } catch (err) {
       console.error(err)
@@ -272,9 +307,9 @@ function AppContent() {
   // Determine form mode and initial data
   const formMode = closingId ? "close" : editing ? "edit" : "new"
   const formInitial = closingId
-    ? trades.find(t => t.id === closingId)
+    ? allTrades.find(t => t.id === closingId)
     : editing
-      ? trades.find(t => t.id === editing)
+      ? allTrades.find(t => t.id === editing)
       : emptyTrade(pairNames)
 
   // Loading auth check
@@ -325,15 +360,16 @@ function AppContent() {
     switch (tab) {
       case 'record': return (
         <div>
+          <TradeFilter filter={tradeFilter} onChange={handleFilterChange} pairs={pairNames} />
           <PsychologyPanel
-            trades={trades}
+            trades={allTrades}
             pairs={pairNames}
             spreadCostMap={spreadCostMap}
             onAddMissed={handleAddMissed}
             onDeleteTrade={confirmDeleteTrade}
           />
           <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={confirmDeleteTrade} />
-          <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={confirmDeleteTrade} spreadCostMap={spreadCostMap} />
+          <TradeTable trades={pagedTrades.filter(t => t.status === 'closed')} onEdit={handleEditTrade} onDelete={confirmDeleteTrade} spreadCostMap={spreadCostMap} pagination={tradePagination} onPageChange={handlePageChange} />
         </div>
       )
       case 'stats': return <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />
@@ -370,9 +406,10 @@ function AppContent() {
       <div key={tab} className="tab-enter">
         {tab === "record" && (
           <div>
+            <TradeFilter filter={tradeFilter} onChange={handleFilterChange} pairs={pairNames} />
             <ExportBar onImported={reloadData} />
             <PsychologyPanel
-              trades={trades}
+              trades={allTrades}
               pairs={pairNames}
               spreadCostMap={spreadCostMap}
               onAddMissed={handleAddMissed}
@@ -400,7 +437,7 @@ function AppContent() {
                 onCancel={handleCancelForm}
               />
             )}
-            <TradeTable trades={closedTrades} onEdit={handleEditTrade} onDelete={confirmDeleteTrade} spreadCostMap={spreadCostMap} />
+            <TradeTable trades={pagedTrades.filter(t => t.status === 'closed')} onEdit={handleEditTrade} onDelete={confirmDeleteTrade} spreadCostMap={spreadCostMap} pagination={tradePagination} onPageChange={handlePageChange} />
           </div>
         )}
         {tab === "stats" && <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />}
