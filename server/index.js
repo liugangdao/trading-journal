@@ -58,9 +58,9 @@ app.get('/api/export', requireAuth, (req, res) => {
     const { from, to } = req.query
     let tradeQuery = 'SELECT * FROM trades WHERE user_id = ?'
     const params = [userId]
-    if (from) { tradeQuery += ' AND date >= ?'; params.push(from) }
-    if (to) { tradeQuery += ' AND date <= ?'; params.push(to) }
-    tradeQuery += ' ORDER BY date DESC'
+    if (from) { tradeQuery += ' AND open_time >= ?'; params.push(from + 'T00:00') }
+    if (to) { tradeQuery += ' AND open_time <= ?'; params.push(to + 'T23:59') }
+    tradeQuery += ' ORDER BY open_time DESC'
     const trades = db.prepare(tradeQuery).all(...params)
     const weeklyNotes = db.prepare('SELECT * FROM weekly_notes WHERE user_id = ? ORDER BY created_at DESC').all(userId)
     const monthlyNotes = db.prepare('SELECT * FROM monthly_notes WHERE user_id = ? ORDER BY created_at DESC').all(userId)
@@ -92,12 +92,14 @@ app.post('/api/import', requireAuth, (req, res) => {
     const importAll = db.transaction(() => {
       if (trades && trades.length) {
         const stmt = db.prepare(`
-          INSERT INTO trades (user_id, date, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO trades (user_id, open_time, close_time, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
         for (const t of trades) {
           const isMissed = t.status === 'missed'
-          stmt.run(userId, t.date, t.pair, t.direction, t.strategy, t.timeframe, t.lots ?? null, isMissed ? (t.entry ?? 0) : (t.entry ?? null), isMissed ? (t.stop ?? 0) : (t.stop ?? null), t.target ?? null, t.exit_price ?? null, t.gross_pnl ?? null, t.swap ?? 0, t.score ?? null, t.emotion ?? null, t.notes ?? null, t.status || 'closed', t.risk_amount ?? null, t.created_at || new Date().toISOString(), t.updated_at || new Date().toISOString())
+          const openTime = t.open_time || (t.date ? t.date + 'T00:00' : new Date().toISOString().slice(0, 16))
+          const closeTime = t.close_time || null
+          stmt.run(userId, openTime, closeTime, t.pair, t.direction, t.strategy, t.timeframe, t.lots ?? null, isMissed ? (t.entry ?? 0) : (t.entry ?? null), isMissed ? (t.stop ?? 0) : (t.stop ?? null), t.target ?? null, t.exit_price ?? null, t.gross_pnl ?? null, t.swap ?? 0, t.score ?? null, t.emotion ?? null, t.notes ?? null, t.status || 'closed', t.risk_amount ?? null, t.created_at || new Date().toISOString(), t.updated_at || new Date().toISOString())
           result.trades++
         }
       }
