@@ -5,12 +5,15 @@ import { PAIRS as DEFAULT_PAIRS, DIRECTIONS, STRATEGIES, TIMEFRAMES, SCORES, EMO
 import { calcTrade } from '../lib/calc'
 import LivermoreQuote from './LivermoreQuote'
 
-const today = () => new Date().toISOString().split("T")[0]
+const now = () => {
+  const d = new Date()
+  return `${d.toISOString().split('T')[0]}T${d.toTimeString().slice(0, 5)}`
+}
 
 export function emptyTrade(pairs) {
   const pairList = pairs && pairs.length > 0 ? pairs : DEFAULT_PAIRS
   return {
-    date: today(), pair: pairList[0], direction: "多(Buy)",
+    open_time: now(), close_time: "", pair: pairList[0], direction: "多(Buy)",
     strategy: "趋势跟踪", timeframe: "H4", lots: "", entry: "", stop: "", target: "",
     exit_price: "", gross_pnl: "", swap: "0", score: "B-基本执行", emotion: "冷静理性", notes: "",
     status: "closed", risk_amount: ""
@@ -63,6 +66,7 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
     const payload = { ...form }
     if (hideExit) payload.status = "open"
     if (isClose) payload.status = "closed"
+    if (isClose && !payload.close_time) payload.close_time = now()
     // Unchecked policies = violations
     payload.violations = filteredPolicies
       .filter(p => !confirmedPolicies.includes(p.id))
@@ -107,7 +111,7 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
         {/* Open and Edit mode fields */}
         {!isClose && (
           <>
-            <Field label="日期"><Input type="date" value={form.date} onChange={uf("date")} /></Field>
+            <Field label="开仓时间"><Input type="datetime-local" value={form.open_time} onChange={uf("open_time")} /></Field>
             <Field label="品种"><Select value={form.pair} onChange={uf("pair")} options={pairOptions} /></Field>
             <Field label="方向"><Select value={form.direction} onChange={uf("direction")} options={DIRECTIONS} /></Field>
             <Field label="策略"><Select value={form.strategy} onChange={uf("strategy")} options={STRATEGIES} /></Field>
@@ -126,6 +130,7 @@ export default function TradeForm({ initial, editing, mode = "edit", pairs, poli
         {!hideExit && (
           <>
             <Field label="出场价 *" required={isRequired("exit_price")}><Input value={form.exit_price} onChange={uf("exit_price")} placeholder="1.03720" /></Field>
+            <Field label="平仓时间"><Input type="datetime-local" value={form.close_time || now()} onChange={uf("close_time")} /></Field>
             <Field label="盈亏 (USD) *" required={isRequired("gross_pnl")}><Input value={form.gross_pnl} onChange={uf("gross_pnl")} placeholder="235" /></Field>
             <Field label="库存费"><Input value={form.swap} onChange={uf("swap")} placeholder="0" /></Field>
             <Field label="执行评分"><Select value={form.score} onChange={uf("score")} options={SCORES} /></Field>
