@@ -10,13 +10,13 @@ const today = () => new Date().toISOString().split("T")[0]
 export default function PsychologyPanel({ trades, pairs, spreadCostMap, onAddMissed, onDeleteTrade }) {
   const [showMissedForm, setShowMissedForm] = useState(false)
   const [showMissedList, setShowMissedList] = useState(false)
-  const [missedForm, setMissedForm] = useState({ date: today(), pair: pairs[0] || '', direction: '多(Buy)', notes: '' })
+  const [missedForm, setMissedForm] = useState({ open_time: today() + 'T00:00', pair: pairs[0] || '', direction: '多(Buy)', notes: '' })
 
   const todayStr = today()
 
   // Today's open trades with risk_amount
   const todayOpenTrades = useMemo(() =>
-    trades.filter(t => t.status === 'open' && t.date === todayStr),
+    trades.filter(t => t.status === 'open' && t.open_time && t.open_time.startsWith(todayStr)),
     [trades, todayStr]
   )
   const todayRiskTotal = useMemo(() =>
@@ -36,20 +36,20 @@ export default function PsychologyPanel({ trades, pairs, spreadCostMap, onAddMis
 
   // Today's missed trades
   const todayMissed = useMemo(() =>
-    trades.filter(t => t.status === 'missed' && t.date === todayStr),
+    trades.filter(t => t.status === 'missed' && t.open_time && t.open_time.startsWith(todayStr)),
     [trades, todayStr]
   )
 
   const handleSubmitMissed = () => {
     if (!missedForm.pair || !missedForm.direction) return
     onAddMissed({
-      date: missedForm.date || todayStr,
+      open_time: missedForm.open_time || todayStr + 'T00:00',
       pair: missedForm.pair,
       direction: missedForm.direction,
       notes: missedForm.notes,
       status: 'missed'
     })
-    setMissedForm({ date: today(), pair: pairs[0] || '', direction: '多(Buy)', notes: '' })
+    setMissedForm({ open_time: today() + 'T00:00', pair: pairs[0] || '', direction: '多(Buy)', notes: '' })
     setShowMissedForm(false)
   }
 
@@ -97,7 +97,7 @@ export default function PsychologyPanel({ trades, pairs, spreadCostMap, onAddMis
           <div className="flex gap-2 items-end flex-wrap">
             <div className="min-w-[110px]">
               <div className="text-[11px] text-muted mb-1">日期</div>
-              <Input type="date" value={missedForm.date} onChange={v => setMissedForm(f => ({ ...f, date: v }))} />
+              <Input type="date" value={missedForm.open_time.split('T')[0]} onChange={v => setMissedForm(f => ({ ...f, open_time: v + 'T00:00' }))} />
             </div>
             <div className="min-w-[100px]">
               <div className="text-[11px] text-muted mb-1">品种</div>
