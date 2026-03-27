@@ -1,11 +1,10 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { calcTrade } from '../lib/calc'
 import EmptyState from './EmptyState'
-
-const PAGE_SIZE = 20
+import Pagination from './ui/Pagination'
 
 const SORTABLE = {
-  date: '日期',
+  open_time: '日期',
   pair: '品种',
   rMultiple: 'R',
   netPnl: '净盈亏',
@@ -24,6 +23,14 @@ function SortHeader({ col, label, sortKey, sortOrder, onSort }) {
   )
 }
 
+function formatTime(openTime) {
+  if (!openTime) return ''
+  const [datePart, timePart] = openTime.split('T')
+  if (!datePart) return openTime
+  const [, mm, dd] = datePart.split('-')
+  return `${mm}/${dd} ${timePart || '00:00'}`
+}
+
 function TradeCard({ trade: t, index, animIndex, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   return (
@@ -36,8 +43,8 @@ function TradeCard({ trade: t, index, animIndex, onEdit, onDelete }) {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`font-mono font-bold text-sm ${t.rMultiple >= 0 ? 'text-green' : 'text-red'}`}>
-            {t.rMultiple > 0 ? "+" : ""}{t.rMultiple}R
+          <span className={`font-mono font-bold text-sm ${t.rMultiple != null && t.rMultiple >= 0 ? 'text-green' : 'text-red'}`}>
+            {t.rMultiple != null ? `${t.rMultiple > 0 ? "+" : ""}${t.rMultiple}R` : '—'}
           </span>
           <span className={`font-mono font-bold text-sm ${t.netPnl >= 0 ? 'text-green' : 'text-red'}`}>
             ${t.netPnl.toFixed(2)}
@@ -45,7 +52,7 @@ function TradeCard({ trade: t, index, animIndex, onEdit, onDelete }) {
         </div>
       </div>
       <div className="flex items-center justify-between mt-1 text-[10px] text-muted">
-        <span>{t.date} · {t.strategy} · {t.timeframe}</span>
+        <span>{formatTime(t.open_time)} · {t.strategy} · {t.timeframe}</span>
         <span>{t.score?.split("-")[0]}</span>
       </div>
       {expanded && (
@@ -66,10 +73,9 @@ function TradeCard({ trade: t, index, animIndex, onEdit, onDelete }) {
   )
 }
 
-export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) {
-  const [sortKey, setSortKey] = useState('date')
+export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap, pagination, onPageChange }) {
+  const [sortKey, setSortKey] = useState('open_time')
   const [sortOrder, setSortOrder] = useState('desc')
-  const [page, setPage] = useState(1)
 
   const computed = useMemo(() => trades.map(t => calcTrade(t, spreadCostMap)), [trades, spreadCostMap])
 
@@ -77,6 +83,8 @@ export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) 
     const arr = [...computed]
     arr.sort((a, b) => {
       let va = a[sortKey], vb = b[sortKey]
+      if (va == null) va = ''
+      if (vb == null) vb = ''
       if (typeof va === 'string') va = va.toLowerCase()
       if (typeof vb === 'string') vb = vb.toLowerCase()
       if (va < vb) return sortOrder === 'asc' ? -1 : 1
@@ -85,13 +93,6 @@ export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) 
     })
     return arr
   }, [computed, sortKey, sortOrder])
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-
-  // Reset page when sort or data changes
-  useEffect(() => { setPage(1) }, [sortKey, sortOrder, trades])
-
-  const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const handleSort = (col) => {
     if (sortKey === col) {
@@ -102,16 +103,15 @@ export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) 
     }
   }
 
-  if (computed.length === 0) {
+  if (computed.length === 0 && (!pagination || pagination.total === 0)) {
     return <EmptyState type="trades" />
   }
 
   return (
     <div>
-      {/* Mobile card view */}
       <div className="sm:hidden space-y-2">
-        {paged.map((t, i) => (
-          <TradeCard key={t.id} trade={t} index={(page - 1) * PAGE_SIZE + i + 1} animIndex={i} onEdit={onEdit} onDelete={onDelete} />
+        {sorted.map((t, i) => (
+          <TradeCard key={t.id} trade={t} index={(pagination ? pagination.offset : 0) + i + 1} animIndex={i} onEdit={onEdit} onDelete={onDelete} />
         ))}
       </div>
 
@@ -120,7 +120,7 @@ export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) 
           <thead>
             <tr className="border-b-2 border-border">
               <th className="px-3 py-3 text-left text-muted text-[11px] font-semibold whitespace-nowrap tracking-wide">#</th>
-              <SortHeader col="date" label="日期" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
+              <SortHeader col="open_time" label="日期" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
               <SortHeader col="pair" label="品种" sortKey={sortKey} sortOrder={sortOrder} onSort={handleSort} />
               <th className="px-3 py-3 text-left text-muted text-[11px] font-semibold whitespace-nowrap tracking-wide">方向</th>
               <th className="px-3 py-3 text-left text-muted text-[11px] font-semibold whitespace-nowrap tracking-wide">策略</th>
@@ -136,11 +136,11 @@ export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) 
             </tr>
           </thead>
           <tbody>
-            {paged.map((t, i) => (
+            {sorted.map((t, i) => (
               <tr key={t.id} className="border-b border-border/50 hover:bg-hover transition-colors duration-150">
-                <td className="px-3 py-3 text-muted">{(page - 1) * PAGE_SIZE + i + 1}</td>
-                <td className="px-3 py-3 whitespace-nowrap">
-                  {t.date}
+                <td className="px-3 py-3 text-muted">{(pagination ? pagination.offset : 0) + i + 1}</td>
+                <td className="px-3 py-3 whitespace-nowrap" title={t.open_time}>
+                  {formatTime(t.open_time)}
                   <span className="block text-[10px] text-muted">{t.weekday}</span>
                 </td>
                 <td className="px-3 py-3 font-semibold">{t.pair}</td>
@@ -157,8 +157,8 @@ export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) 
                 <td className="px-3 py-3 font-mono">{t.lots}</td>
                 <td className="px-3 py-3 font-mono text-[11px]">{t.entry}</td>
                 <td className="px-3 py-3 font-mono text-[11px]">{t.exit_price}</td>
-                <td className={`px-3 py-3 font-mono font-bold ${t.rMultiple >= 0 ? 'text-green' : 'text-red'}`}>
-                  {t.rMultiple > 0 ? "+" : ""}{t.rMultiple}R
+                <td className={`px-3 py-3 font-mono font-bold ${t.rMultiple != null && t.rMultiple >= 0 ? 'text-green' : 'text-red'}`}>
+                  {t.rMultiple != null ? `${t.rMultiple > 0 ? "+" : ""}${t.rMultiple}R` : '—'}
                 </td>
                 <td className={`px-3 py-3 font-mono font-bold ${t.netPnl >= 0 ? 'text-green' : 'text-red'}`}>
                   ${t.netPnl.toFixed(2)}
@@ -179,36 +179,12 @@ export default function TradeTable({ trades, onEdit, onDelete, spreadCostMap }) 
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 text-sm text-muted">
-          <span>共 {sorted.length} 条记录</span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 rounded-lg border border-border text-xs cursor-pointer
-                hover:text-text hover:border-accent/50 transition-all duration-200
-                disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              « 上一页
-            </button>
-            <span className="text-xs">第 {page} / {totalPages} 页</span>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 rounded-lg border border-border text-xs cursor-pointer
-                hover:text-text hover:border-accent/50 transition-all duration-200
-                disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              下一页 »
-            </button>
-          </div>
-        </div>
-      )}
-      {totalPages <= 1 && sorted.length > 0 && (
-        <div className="mt-4 text-xs text-muted">共 {sorted.length} 条记录</div>
-      )}
+      <Pagination
+        total={pagination ? pagination.total : sorted.length}
+        limit={pagination ? pagination.limit : 0}
+        offset={pagination ? pagination.offset : 0}
+        onChange={onPageChange || (() => {})}
+      />
     </div>
   )
 }
