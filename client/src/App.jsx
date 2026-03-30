@@ -428,7 +428,7 @@ function AppContent() {
               onAddMissed={handleAddMissed}
               onDeleteTrade={confirmDeleteTrade}
             />
-            <TradingViewChart />
+            <TradingViewChart key={theme} theme={theme} />
             <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={confirmDeleteTrade} />
             {!showForm && (
               <button

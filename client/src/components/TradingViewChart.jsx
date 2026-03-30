@@ -1,11 +1,13 @@
 import { useEffect, useRef, memo } from 'react'
 
-function TradingViewChart() {
+function TradingViewChart({ theme = 'dark' }) {
   const containerRef = useRef(null)
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
+    // Skip if widget already initialized (StrictMode double-mount)
+    if (container.querySelector('iframe')) return
 
     const script = document.createElement('script')
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
@@ -13,7 +15,7 @@ function TradingViewChart() {
     script.async = true
     script.innerHTML = JSON.stringify({
       symbol: 'FX:EURUSD',
-      theme: 'dark',
+      theme: theme === 'dark' ? 'dark' : 'light',
       autosize: true,
       style: '1',
       locale: 'zh_CN',
@@ -23,12 +25,6 @@ function TradingViewChart() {
       support_host: 'https://www.tradingview.com'
     })
     container.appendChild(script)
-
-    return () => {
-      while (container.firstChild) {
-        container.removeChild(container.firstChild)
-      }
-    }
   }, [])
 
   return (
