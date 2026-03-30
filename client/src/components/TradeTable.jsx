@@ -34,8 +34,8 @@ function formatTime(openTime) {
 function TradeCard({ trade: t, index, animIndex, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   return (
-    <div className="bg-card border border-border rounded-xl p-3 active:scale-[0.97] active:opacity-80 transition-transform duration-100 animate-fade-in-up" style={{ animationDelay: `${animIndex * 40}ms` }}>
-      <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpanded(!expanded)}>
+    <div className="bg-card border border-border rounded-xl p-3 animate-fade-in-up" style={{ animationDelay: `${animIndex * 40}ms` }}>
+      <div className="flex items-center justify-between cursor-pointer active:scale-[0.97] active:opacity-80 transition-transform duration-100" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center gap-2">
           <span className="font-bold text-sm">{t.pair}</span>
           <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${t.direction.startsWith("多") ? 'bg-green/10 text-green' : 'bg-red/10 text-red'}`}>
