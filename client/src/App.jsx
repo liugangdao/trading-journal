@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard'
 import WeeklyNotes from './components/WeeklyNotes'
 import MonthlyNotes from './components/MonthlyNotes'
 import OpenPositions from './components/OpenPositions'
+import TradingViewChart from './components/TradingViewChart'
 import PsychologyPanel from './components/PsychologyPanel'
 import ExportBar from './components/ExportBar'
 import TradeFilter from './components/TradeFilter'
@@ -427,6 +428,7 @@ function AppContent() {
               onAddMissed={handleAddMissed}
               onDeleteTrade={confirmDeleteTrade}
             />
+            <TradingViewChart />
             <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={confirmDeleteTrade} />
             {!showForm && (
               <button
