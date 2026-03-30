@@ -21,7 +21,7 @@ export default function OpenPositions({ openTrades, onClose, onDelete }) {
       <h3 className="text-sm font-bold text-muted mb-3">持仓中 ({openTrades.length})</h3>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
         {openTrades.map((trade, i) => (
-          <div key={trade.id} className="bg-card border border-border rounded-xl p-4 active:scale-[0.98] transition-transform duration-100 animate-fade-in-up" style={{ animationDelay: `${i * 40}ms` }}>
+          <div key={trade.id} className="bg-card border border-border rounded-xl p-4 animate-fade-in-up" style={{ animationDelay: `${i * 40}ms` }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm">{trade.pair}</span>

@@ -401,6 +401,18 @@ function AppContent() {
       pairs={pairNames} policies={policies} editViolations={editViolations}
       editing={editing} closingId={closingId}
       mobileTabContent={mobileTabContent}
+      overlays={
+        <>
+          <PwaPrompt />
+          <ConfirmDialog
+            open={confirmState.open}
+            title="确认删除"
+            message="删除后无法恢复，确定要继续吗？"
+            onConfirm={handleConfirmDelete}
+            onCancel={cancelDelete}
+          />
+        </>
+      }
     >
       {/* Desktop tab content */}
       <div key={tab} className="tab-enter">
@@ -446,14 +458,6 @@ function AppContent() {
         {tab === "policy" && <Policies />}
         {tab === "settings" && <Settings pairs={pairs} onPairsChange={setPairs} />}
       </div>
-      <PwaPrompt />
-      <ConfirmDialog
-        open={confirmState.open}
-        title="确认删除"
-        message="删除后无法恢复，确定要继续吗？"
-        onConfirm={handleConfirmDelete}
-        onCancel={cancelDelete}
-      />
     </Layout>
   )
 }

@@ -21,6 +21,8 @@ export default function Layout({
   pairs, policies, editViolations, editing, closingId,
   // Mobile tab content
   mobileTabContent,
+  // Global overlays rendered outside responsive containers
+  overlays,
 }) {
   return (
     <>
@@ -80,6 +82,9 @@ export default function Layout({
           </main>
         </div>
       </div>
+
+      {/* Global overlays — must be outside responsive containers so they're visible on all screen sizes */}
+      {overlays}
     </>
   )
 }
