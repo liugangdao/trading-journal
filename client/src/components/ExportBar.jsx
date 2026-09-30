@@ -6,10 +6,21 @@ export default function ExportBar({ onImported }) {
   const [to, setTo] = useState('')
   const [importing, setImporting] = useState(false)
   const [importMsg, setImportMsg] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [exportMsg, setExportMsg] = useState('')
   const fileRef = useRef(null)
 
-  const handleExport = () => {
-    api.exportData(from || undefined, to || undefined)
+  const handleExport = async () => {
+    setExporting(true)
+    setExportMsg('')
+    try {
+      const result = await api.exportData(from || undefined, to || undefined)
+      setExportMsg(`导出文件已生成（${Math.max(1, Math.ceil(result.bytes / 1024))} KB）`)
+    } catch (error) {
+      setExportMsg(`导出失败：${error.message}`)
+    } finally {
+      setExporting(false)
+    }
   }
 
   const handleImport = async (e) => {
@@ -22,7 +33,7 @@ export default function ExportBar({ onImported }) {
       const data = JSON.parse(text)
       const result = await api.importData(data)
       const r = result.imported
-      setImportMsg(`导入成功：${r.trades} 条交易、${r.weeklyNotes} 条周记、${r.monthlyNotes} 条月记`)
+      setImportMsg(`导入成功：${r.trades} 条交易、${r.tradeImages} 张截图、${r.weeklyGoals} 条周目标、${r.weeklyNotes} 条周记、${r.monthlyNotes} 条月记`)
       if (onImported) onImported()
     } catch (err) {
       setImportMsg(`导入失败：${err.message}`)
@@ -57,10 +68,11 @@ export default function ExportBar({ onImported }) {
         </div>
         <button
           onClick={handleExport}
+          disabled={exporting}
           className="px-4 py-1.5 rounded-lg text-xs font-medium text-muted border border-border
             hover:text-text hover:border-accent/50 transition-all duration-200 cursor-pointer"
         >
-          导出数据
+          {exporting ? '导出中...' : '导出数据'}
         </button>
         <label
           className={`px-4 py-1.5 rounded-lg text-xs font-medium text-muted border border-border
@@ -84,6 +96,8 @@ export default function ExportBar({ onImported }) {
           {importMsg}
         </p>
       )}
+      {exportMsg && <p role="status" className={`text-xs ${exportMsg.includes('失败') ? 'text-red' : 'text-green'}`}>{exportMsg}</p>}
+      <p className="text-[11px] text-muted">导入会追加交易；整份备份导回同一账号会产生重复记录。Hyperliquid 同步账号及游标不在备份中。</p>
     </div>
   )
 }

@@ -113,12 +113,19 @@ export const api = {
     if (to) params.set('to', to)
     const qs = params.toString()
     const res = await fetch(`${BASE}/export${qs ? '?' + qs : ''}`, { credentials: 'include' })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: '导出失败' }))
+      throw new Error(error.error || '导出失败')
+    }
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `trading-journal-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    return { bytes: blob.size }
   },
 }
