@@ -1,93 +1,40 @@
-# Trading Journal / 交易日志
+# Trading Journal / 交易手记
 
-个人交易记录与复盘工具，支持外汇、贵金属及能源品种的交易记录、统计分析和周度复盘。
+面向突破与趋势延续交易的轻量手记。每笔交易先记判断，结束后补结果与执行评价，重点关注交易过程。
 
-## 功能特性
+## 使用流程
 
-- **交易记录** — 记录每笔交易的完整信息（品种、方向、策略、价格、盈亏、执行评分、情绪状态等）
-- **实时计算** — 录入时自动预览止损点数、盈亏点数、R 倍数、点差成本和净盈亏
-- **数据面板** — 胜率、盈亏比、Profit Factor、累计净值曲线、品种/策略/时段/情绪多维度分析
-- **周度复盘** — 按周记录交易心得与改进计划
-- **数据导出** — 一键导出全部交易记录和复盘笔记为 JSON 文件
+1. 在“记录”填写时间、品种、方向、市场环境、Setup、入场理由和失效条件。入场理由与失效条件必填，退出原因在结束交易时补充。
+2. 交易结束后编辑该笔记录，选择结构止损、移动止损、measured move目标或手动平仓，可同时填写 R 和美元盈亏，也可只填其中一项。执行评价可多选：计划内、FOMO、追涨杀跌、提前平仓、移动止损过早、逆势、未等收盘确认；提前或手动平仓时需要写明原因，最后回答“遮住盈亏仍是好交易吗？”
+3. 在记录表单直接粘贴截图（Ctrl+V）或选择图片。每笔最多 8 张，每张不超过 5 MB，支持 PNG、JPEG、WebP。
+4. “交易记录”保留旧版完整明细与持仓，支持按顺序逐笔复盘：截图在上、交易说明在下；点击“编辑这笔交易”可在复盘页内修改。
+5. “日历”按天分别显示交易笔数、R 与美元盈亏。“统计”突出胜率、平均盈利 R、平均亏损 R、期望值和违规率，并显示按日的期望曲线；原有美元分析仍可查看，累计净盈亏按交易日合并。
+6. 在“设置”按周写目标；当前周目标会显示在记录表单上方。品种管理可折叠，默认提供 XAUUSD、EURUSD、USDCAD、BTCUSD、USOIL，支持自行增删改；也可导入导出 JSON。
 
-### 支持品种
-
-外汇：EUR/USD, GBP/USD, USD/JPY, AUD/USD, NZD/USD, USD/CAD, USD/CHF, EUR/GBP, EUR/JPY, GBP/JPY, AUD/JPY
-
-商品：XAU/USD, XAG/USD, USOil, UKOil, NGAS
+旧周度复盘、月度复盘及交易政策不再提供页面入口；旧数据及兼容接口保留。旧交易可从原有明细表查看、编辑和平仓。TradingView K 线块已移除。
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 前端 | React 19 + Vite 7 + Tailwind CSS v4 + Recharts |
-| 后端 | Express 5 + better-sqlite3 |
-| 数据库 | SQLite |
-| 部署 | Docker (Node 20 Alpine, 多阶段构建) |
+React 19、Vite 7、Tailwind CSS v4、Express 5、SQLite（better-sqlite3）。登录采用服务端会话，交易、目标和截图按用户隔离。截图作为 BLOB 保存在同一 SQLite 数据库中，随持久化卷保存；JSON 导出包含截图和周目标。
 
-## 快速开始
-
-### 本地开发
+## 本地运行
 
 ```bash
-# 安装所有依赖
 npm run install:all
-
-# 启动开发服务器 (前端 :3000 + 后端 :3001)
 npm run dev
 ```
 
-开发模式下 Vite 会自动将 `/api` 请求代理到后端。
+前端地址为 `http://localhost:3000/`，后端地址为 `http://localhost:3001/`。开发模式下 Vite 将 `/api` 请求代理到后端。生产构建使用 `npm run build`，Docker 可使用 `docker compose up -d`。数据库位于 `data/journal.db`，部署时须将 `/app/data` 挂载为持久化卷。
 
-### Docker 部署
+## 主要接口
 
-```bash
-docker compose up -d
-```
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| GET | `/api/journal?month=YYYY-MM` | 按月读取交易和图片数量 |
+| POST/PUT/DELETE | `/api/journal`、`/api/journal/:id` | 新建、更新、删除轻量交易 |
+| GET/POST | `/api/journal/:id/images` | 列出、上传交易截图 |
+| GET/DELETE | `/api/journal/:id/images/:imageId` | 查看、删除截图 |
+| GET/PUT | `/api/journal/goals/:week` | 读取、保存周目标，周格式为 `YYYY-Www` |
+| GET/POST | `/api/export`、`/api/import` | JSON 导出、导入 |
 
-服务运行在 `http://localhost:3001`，数据库文件持久化在 `./data/` 目录。
-
-### 填充示例数据
-
-```bash
-node server/seed.js
-```
-
-## 项目结构
-
-```
-trading-journal/
-├── client/                 # 前端
-│   └── src/
-│       ├── components/     # React 组件
-│       │   ├── ui/         # 基础 UI 组件 (Input, Select, Tab, KpiCard)
-│       │   ├── Layout.jsx  # 页面布局与导航
-│       │   ├── TradeForm.jsx    # 交易表单 (新建/编辑)
-│       │   ├── TradeTable.jsx   # 交易记录表格
-│       │   ├── Dashboard.jsx    # 数据统计面板
-│       │   └── WeeklyNotes.jsx  # 周度复盘
-│       ├── hooks/useApi.js      # API 客户端
-│       └── lib/
-│           ├── calc.js          # 交易计算 (R倍数、统计聚合)
-│           └── constants.js     # 品种、策略、评分等常量
-├── server/                 # 后端
-│   ├── index.js            # Express 入口
-│   ├── db.js               # SQLite 初始化
-│   ├── routes/             # API 路由
-│   └── seed.js             # 示例数据
-├── Dockerfile
-└── docker-compose.yml
-```
-
-## API
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/trades` | 获取交易列表 (支持 `?sort=` 和 `?order=`) |
-| POST | `/api/trades` | 新建交易 |
-| PUT | `/api/trades/:id` | 更新交易 |
-| DELETE | `/api/trades/:id` | 删除交易 |
-| GET | `/api/notes` | 获取周度笔记 |
-| POST | `/api/notes` | 新建周度笔记 |
-| DELETE | `/api/notes/:id` | 删除周度笔记 |
-| GET | `/api/export` | 导出全部数据 (JSON 下载) |
+旧版 `/api/trades`、复盘和政策接口继续保留以兼容历史数据；新页面不再调用旧复盘与政策接口。

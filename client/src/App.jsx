@@ -1,473 +1,181 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import Layout from './components/Layout'
+import { useCallback, useEffect, useState } from 'react'
 import LandingPage from './components/LandingPage'
 import AuthPage from './components/AuthPage'
-import TradeForm, { emptyTrade } from './components/TradeForm'
+import TradeForm from './components/TradeForm'
+import LegacyTradeForm from './components/LegacyTradeForm'
+import JournalCard from './components/JournalCard'
+import CalendarView from './components/CalendarView'
+import ReviewOverlay from './components/ReviewOverlay'
+import TradeImageEditor from './components/TradeImageEditor'
 import TradeTable from './components/TradeTable'
-import Dashboard from './components/Dashboard'
-import WeeklyNotes from './components/WeeklyNotes'
-import MonthlyNotes from './components/MonthlyNotes'
 import OpenPositions from './components/OpenPositions'
-import TradingViewChart from './components/TradingViewChart'
-import PsychologyPanel from './components/PsychologyPanel'
-import ExportBar from './components/ExportBar'
-import TradeFilter from './components/TradeFilter'
+import Dashboard from './components/Dashboard'
+import RStatsPanel from './components/RStatsPanel'
+import WeeklyGoalSettings from './components/WeeklyGoalSettings'
 import Settings from './components/Settings'
-import Policies from './components/Policies'
-import NotesTab from './components/NotesTab'
-import MoreTab from './components/MoreTab'
+import ExportBar from './components/ExportBar'
 import PwaPrompt from './components/PwaPrompt'
 import { api } from './hooks/useApi'
 import { useTheme } from './hooks/useTheme'
 import { ToastProvider, useToast } from './components/ui/Toast'
-import { SkeletonKpi, SkeletonCard, SkeletonChart } from './components/ui/Skeleton'
-import ConfirmDialog from './components/ui/ConfirmDialog'
+import { currentWeekKey, localMonth } from './lib/week'
+
+function todayKey() {
+  const date = new Date()
+  return `${localMonth(date)}-${String(date.getDate()).padStart(2, '0')}`
+}
 
 function AppContent() {
-  // Auth state: null = checking, false = logged out, object = logged in
-  const [authUser, setAuthUser] = useState(null)
+  const [user, setUser] = useState(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
-
+  const [tab, setTab] = useState('record')
+  const [month, setMonth] = useState(() => localMonth())
+  const [selectedDay, setSelectedDay] = useState(() => todayKey())
+  const [trades, setTrades] = useState([])
   const [allTrades, setAllTrades] = useState([])
-  const [pagedTrades, setPagedTrades] = useState([])
-  const [tradePagination, setTradePagination] = useState({ total: 0, limit: 20, offset: 0 })
-  const [tradeFilter, setTradeFilter] = useState({ date_from: null, date_to: null, pair: null, direction: null })
-  const [notes, setNotes] = useState([])
-  const [monthlyNotes, setMonthlyNotes] = useState([])
-  const [tab, setTab] = useState("stats")
-  const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState(null)
-  const [closingId, setClosingId] = useState(null)
-  const [editViolations, setEditViolations] = useState([])
   const [pairs, setPairs] = useState([])
-  const [policies, setPolicies] = useState([])
+  const [weekGoal, setWeekGoal] = useState('')
+  const [showForm, setShowForm] = useState(true)
+  const [editing, setEditing] = useState(null)
+  const [legacyEditing, setLegacyEditing] = useState(null)
+  const [legacyClosing, setLegacyClosing] = useState(false)
+  const [reviewId, setReviewId] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const { theme, toggleTheme } = useTheme()
   const toast = useToast()
-  const [confirmState, setConfirmState] = useState({ open: false, id: null, type: null })
 
-  // Check session on mount
   useEffect(() => {
-    api.getMe()
-      .then(user => {
-        setAuthUser(user || false)
-        setAuthChecked(true)
-      })
-      .catch(() => {
-        setAuthUser(false)
-        setAuthChecked(true)
-      })
+    api.getMe().then(next => setUser(next || false)).catch(() => setUser(false)).finally(() => setAuthChecked(true))
+    api.setUnauthorizedHandler(() => { setUser(false); setShowAuth(false) })
   }, [])
 
-  // Set 401 handler to log user out
-  useEffect(() => {
-    api.setUnauthorizedHandler(() => {
-      setAuthUser(false)
-      setShowAuth(false)
-    })
+  const loadMonth = useCallback(async targetMonth => {
+    const result = await api.getJournal(targetMonth)
+    setTrades(result)
   }, [])
-
-  // Load data when authenticated
-  const fetchPagedTrades = useCallback((filter, offset = 0) => {
-    const params = { limit: 20, offset, sort: 'open_time', order: 'desc' }
-    if (filter.date_from) params.date_from = filter.date_from
-    if (filter.date_to) params.date_to = filter.date_to
-    if (filter.pair) params.pair = filter.pair
-    if (filter.direction) params.direction = filter.direction
-    return api.getTrades(params).then(result => {
-      setPagedTrades(result.trades)
-      setTradePagination({ total: result.total, limit: result.limit, offset: result.offset })
-    })
-  }, [])
-
-  const reloadData = useCallback(() => {
-    return Promise.all([
-      api.getTrades(),
-      api.getNotes(), api.getMonthlyNotes(), api.getPairs(), api.getPolicies()
-    ]).then(([allResult, n, mn, p, pol]) => {
-      setAllTrades(allResult.trades)
-      setNotes(n); setMonthlyNotes(mn); setPairs(p); setPolicies(pol)
-    }).catch(console.error)
+  const loadAll = useCallback(async () => {
+    const result = await api.getTrades()
+    setAllTrades(result.trades)
   }, [])
 
   useEffect(() => {
-    if (!authUser) return
+    if (!user) return
+    let active = true
     setLoading(true)
-    Promise.all([reloadData(), fetchPagedTrades(tradeFilter)]).finally(() => setLoading(false))
-  }, [authUser, reloadData, fetchPagedTrades])
+    setLoadError('')
+    Promise.all([api.getJournal(month), api.getTrades(), api.getPairs(), api.getWeeklyGoal(currentWeekKey())])
+      .then(([journal, archive, nextPairs, goal]) => { if (active) { setTrades(journal); setAllTrades(archive.trades); setPairs(nextPairs); setWeekGoal(goal.content) } })
+      .catch(error => { if (active) setLoadError(error.message || '读取失败') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [user, month])
 
-  // Auth handlers
-  const handleAuth = useCallback((user) => {
-    setAuthUser(user)
-    setShowAuth(false)
-  }, [])
-
-  const handleLogout = useCallback(async () => {
+  const beginNew = () => { setEditing(null); setShowForm(true); setTab('record') }
+  const beginEdit = trade => {
+    if (!trade.entry_reason) { setLegacyEditing(trade); setLegacyClosing(false); setTab('history') }
+    else { setEditing(trade); setShowForm(true); setTab('record') }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const beginLegacyClose = trade => { setLegacyEditing(trade); setLegacyClosing(true); setTab('history'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const cancelForm = () => { setEditing(null); setShowForm(false) }
+  const saveLegacyTrade = async form => {
     try {
-      await api.logout()
-    } catch (err) {
-      console.error(err)
+      const { violations, ...trade } = form
+      await api.updateTrade(legacyEditing.id, { ...trade, status: legacyClosing ? 'closed' : trade.status })
+      setLegacyEditing(null); setLegacyClosing(false)
+      await Promise.all([loadAll(), loadMonth(month)])
+      toast.success('交易已更新')
+    } catch (error) { toast.error(error.message || '保存失败') }
+  }
+  const saveTrade = async (form, images, targetTrade = editing) => {
+    const saved = targetTrade ? await api.updateJournal(targetTrade.id, form) : await api.createJournal(form)
+    let uploadError = null
+    for (const image of images) {
+      try { await api.uploadJournalImage(saved.id, image) }
+      catch (error) { uploadError = error; break }
     }
-    setAuthUser(false)
-    setAllTrades([])
-    setPagedTrades([])
-    setTradePagination({ total: 0, limit: 20, offset: 0 })
-    setTradeFilter({ date_from: null, date_to: null, pair: null, direction: null })
-    setNotes([])
-    setMonthlyNotes([])
-    setPairs([])
-    setPolicies([])
-  }, [])
-
-  const handleFilterChange = useCallback((newFilter) => {
-    setTradeFilter(newFilter)
-    fetchPagedTrades(newFilter, 0)
-  }, [fetchPagedTrades])
-
-  const handlePageChange = useCallback((newOffset) => {
-    fetchPagedTrades(tradeFilter, newOffset)
-  }, [tradeFilter, fetchPagedTrades])
-
-  // Derived data
-  const openTrades = useMemo(() => allTrades.filter(t => t.status === 'open'), [allTrades])
-  const closedTrades = useMemo(() => allTrades.filter(t => t.status === 'closed'), [allTrades])
-  const spreadCostMap = useMemo(() => {
-    const map = {}
-    pairs.forEach(p => { map[p.name] = p.spread_cost })
-    return map
-  }, [pairs])
-  const pairNames = useMemo(() => pairs.map(p => p.name), [pairs])
-
-  // Trade CRUD
-  const handleAddTrade = useCallback(async (form) => {
-    try {
-      const { violations, ...tradeData } = form
-      if (editing) {
-        await api.updateTrade(editing, tradeData)
-        await api.updateTradeViolations(editing, violations || [])
-        setEditing(null)
-      } else {
-        const created = await api.createTrade(tradeData)
-        if (violations && violations.length > 0) {
-          await api.updateTradeViolations(created.id, violations)
-        }
-      }
-      setShowForm(false)
-      setEditViolations([])
-      reloadData()
-      fetchPagedTrades(tradeFilter, tradePagination.offset)
-      toast.success(editing ? '交易已更新' : '交易已记录')
-    } catch (err) {
-      console.error(err)
-      toast.error('操作失败，请重试')
-    }
-  }, [editing, toast])
-
-  const handleCloseTrade = useCallback((trade) => {
-    setClosingId(trade.id)
     setEditing(null)
-    setShowForm(true)
-  }, [])
-
-  const handleCloseSubmit = useCallback(async (form) => {
-    try {
-      const { violations, ...tradeData } = form
-      await api.updateTrade(closingId, { ...tradeData, status: 'closed' })
-      await api.updateTradeViolations(closingId, violations || [])
-      setClosingId(null)
-      setShowForm(false)
-      reloadData()
-      fetchPagedTrades(tradeFilter, tradePagination.offset)
-      toast.success('已平仓')
-    } catch (err) {
-      console.error(err)
-      toast.error('平仓失败，请重试')
-    }
-  }, [closingId, toast])
-
-  const handleEditTrade = useCallback(async (trade) => {
-    setEditing(trade.id)
-    setClosingId(null)
-    setTab("record")
-    try {
-      const violations = await api.getTradeViolations(trade.id)
-      setEditViolations(violations.map(v => v.policy_id))
-    } catch (err) {
-      console.error(err)
-      setEditViolations([])
-    }
-    setShowForm(true)
-  }, [])
-
-  const handleDeleteTrade = useCallback(async (id) => {
-    try {
-      await api.deleteTrade(id)
-      reloadData()
-      fetchPagedTrades(tradeFilter, tradePagination.offset)
-      toast.success('已删除')
-    } catch (err) {
-      console.error(err)
-      toast.error('删除失败，请重试')
-    }
-  }, [toast])
-
-  const handleCancelForm = useCallback(() => {
     setShowForm(false)
-    setEditing(null)
-    setClosingId(null)
-    setEditViolations([])
-  }, [])
-
-  const handleNewTrade = useCallback(() => {
-    setEditing(null)
-    setClosingId(null)
-    setEditViolations([])
-    setShowForm(true)
-  }, [])
-
-  const handleAddMissed = useCallback(async (form) => {
-    try {
-      await api.createTrade(form)
-      reloadData()
-      fetchPagedTrades(tradeFilter, tradePagination.offset)
-      toast.success('踏空记录已添加')
-    } catch (err) {
-      console.error(err)
-      toast.error('记录失败，请重试')
-    }
-  }, [toast])
-
-  // Notes CRUD
-  const handleAddNote = useCallback(async (form) => {
-    try {
-      const created = await api.createNote(form)
-      setNotes(prev => [created, ...prev])
-      toast.success('笔记已保存')
-    } catch (err) {
-      console.error(err)
-      toast.error('保存失败，请重试')
-    }
-  }, [toast])
-
-  const handleDeleteNote = useCallback(async (id) => {
-    try {
-      await api.deleteNote(id)
-      setNotes(prev => prev.filter(n => n.id !== id))
-      toast.success('已删除')
-    } catch (err) {
-      console.error(err)
-      toast.error('删除失败，请重试')
-    }
-  }, [toast])
-
-  // Monthly Notes CRUD
-  const handleAddMonthlyNote = useCallback(async (form) => {
-    try {
-      const created = await api.createMonthlyNote(form)
-      setMonthlyNotes(prev => [created, ...prev])
-      toast.success('笔记已保存')
-    } catch (err) {
-      console.error(err)
-      toast.error('保存失败，请重试')
-    }
-  }, [toast])
-
-  const handleDeleteMonthlyNote = useCallback(async (id) => {
-    try {
-      await api.deleteMonthlyNote(id)
-      setMonthlyNotes(prev => prev.filter(n => n.id !== id))
-      toast.success('已删除')
-    } catch (err) {
-      console.error(err)
-      toast.error('删除失败，请重试')
-    }
-  }, [toast])
-
-  // Delete confirmation
-  const requestDelete = useCallback((id, type) => {
-    setConfirmState({ open: true, id, type })
-  }, [])
-
-  const handleConfirmDelete = useCallback(async () => {
-    const { id, type } = confirmState
-    setConfirmState({ open: false, id: null, type: null })
-    if (type === 'trade') await handleDeleteTrade(id)
-    else if (type === 'note') await handleDeleteNote(id)
-    else if (type === 'monthlyNote') await handleDeleteMonthlyNote(id)
-  }, [confirmState, handleDeleteTrade, handleDeleteNote, handleDeleteMonthlyNote])
-
-  const cancelDelete = useCallback(() => {
-    setConfirmState({ open: false, id: null, type: null })
-  }, [])
-
-  const confirmDeleteTrade = useCallback((id) => requestDelete(id, 'trade'), [requestDelete])
-  const confirmDeleteNote = useCallback((id) => requestDelete(id, 'note'), [requestDelete])
-  const confirmDeleteMonthlyNote = useCallback((id) => requestDelete(id, 'monthlyNote'), [requestDelete])
-
-  // Determine form mode and initial data
-  const formMode = closingId ? "close" : editing ? "edit" : "new"
-  const formInitial = closingId
-    ? allTrades.find(t => t.id === closingId)
-    : editing
-      ? allTrades.find(t => t.id === editing)
-      : emptyTrade(pairNames)
-
-  // Loading auth check
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center text-muted">
-        加载中...
-      </div>
-    )
+    const tradeMonth = saved.open_time.slice(0, 7)
+    setSelectedDay(saved.open_time.slice(0, 10))
+    if (tradeMonth !== month) setMonth(tradeMonth)
+    else await loadMonth(month).catch(error => toast.error(`交易已保存，但列表刷新失败：${error.message}`))
+    await loadAll().catch(error => toast.error(`交易已保存，但交易记录刷新失败：${error.message}`))
+    toast.success('交易已保存')
+    if (uploadError) toast.error(`部分截图未保存：${uploadError.message}。可重新编辑交易补传。`)
+    return saved
   }
-
-  // Not logged in - show landing or auth
-  if (!authUser) {
-    if (showAuth) {
-      return <AuthPage onAuth={handleAuth} onBack={() => setShowAuth(false)} theme={theme} onToggleTheme={toggleTheme} />
+  const saveReviewLegacyTrade = async (trade, form) => {
+    try {
+      const { violations, ...payload } = form
+      await api.updateTrade(trade.id, payload)
+      await Promise.all([loadAll(), loadMonth(month)])
+      toast.success('交易已更新')
+      return true
+    } catch (error) {
+      toast.error(error.message || '保存失败')
+      return false
     }
-    return <LandingPage onNavigateAuth={() => setShowAuth(true)} theme={theme} onToggleTheme={toggleTheme} />
   }
-
-  // Logged in - loading data
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-bg text-text font-sans">
-        <div className="bg-card border-b border-border px-6 py-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="h-5 w-24 bg-border/60 rounded animate-pulse mb-1" />
-            <div className="h-3 w-48 bg-border/40 rounded animate-pulse" />
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
-          <div className="flex gap-3 flex-wrap mb-6">
-            <SkeletonKpi />
-            <SkeletonKpi />
-            <SkeletonKpi />
-            <SkeletonKpi />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SkeletonChart />
-            <SkeletonChart />
-          </div>
-        </div>
-      </div>
-    )
+  const deleteTrade = async id => {
+    if (!window.confirm('确定删除这笔交易及其截图吗？')) return
+    try { await api.deleteJournal(id); await Promise.all([loadMonth(month), loadAll()]); toast.success('交易已删除') }
+    catch (error) { toast.error(error.message || '删除失败') }
   }
+  const logout = async () => {
+    try { await api.logout() } catch (error) { console.error(error) }
+    setUser(false); setTrades([]); setAllTrades([]); setPairs([]); setWeekGoal('')
+  }
+  const changeMonth = value => { setMonth(value); setSelectedDay(`${value}-01`) }
+  const quickTrades = allTrades.filter(trade => Boolean(trade.entry_reason))
+  const legacyClosed = allTrades.filter(trade => !trade.entry_reason && trade.status === 'closed' && trade.gross_pnl != null)
+  const dollarTrades = allTrades.filter(trade => trade.status === 'closed' && trade.gross_pnl != null)
+  const legacyOpen = allTrades.filter(trade => !trade.entry_reason && trade.status === 'open')
+  const legacyMissed = allTrades.filter(trade => trade.status === 'missed')
+  const spreadCostMap = Object.fromEntries(pairs.map(pair => [pair.name, pair.spread_cost]))
 
-  // Mobile tab content renderer
-  const mobileTabContent = (() => {
-    switch (tab) {
-      case 'record': return (
-        <div>
-          <TradeFilter filter={tradeFilter} onChange={handleFilterChange} pairs={pairNames} />
-          <PsychologyPanel
-            trades={allTrades}
-            pairs={pairNames}
-            spreadCostMap={spreadCostMap}
-            onAddMissed={handleAddMissed}
-            onDeleteTrade={confirmDeleteTrade}
-          />
-          <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={confirmDeleteTrade} />
-          <TradeTable trades={pagedTrades.filter(t => t.status === 'closed')} onEdit={handleEditTrade} onDelete={confirmDeleteTrade} spreadCostMap={spreadCostMap} pagination={tradePagination} onPageChange={handlePageChange} />
-        </div>
-      )
-      case 'stats': return <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />
-      case 'notes': return (
-        <NotesTab
-          notes={notes} monthlyNotes={monthlyNotes}
-          onAddNote={handleAddNote} onDeleteNote={confirmDeleteNote}
-          onAddMonthlyNote={handleAddMonthlyNote} onDeleteMonthlyNote={confirmDeleteMonthlyNote}
-        />
-      )
-      case 'more': return (
-        <MoreTab
-          pairs={pairs} onPairsChange={setPairs} onImported={reloadData}
-          theme={theme} onToggleTheme={toggleTheme} user={authUser} onLogout={handleLogout}
-        />
-      )
-      default: return null
-    }
-  })()
+  if (!authChecked) return <div className="min-h-screen bg-bg text-muted flex items-center justify-center">加载中…</div>
+  if (!user) return showAuth
+    ? <AuthPage onAuth={next => { setUser(next); setShowAuth(false) }} onBack={() => setShowAuth(false)} theme={theme} onToggleTheme={toggleTheme} />
+    : <LandingPage onNavigateAuth={() => setShowAuth(true)} theme={theme} onToggleTheme={toggleTheme} />
 
-  return (
-    <Layout
-      tab={tab} setTab={setTab} tradeCount={closedTrades.length} openCount={openTrades.length}
-      theme={theme} onToggleTheme={toggleTheme} user={authUser} onLogout={handleLogout}
-      // Mobile sheet props
-      showForm={showForm} formMode={formMode} formInitial={formInitial}
-      onNewTrade={handleNewTrade} onFormSubmit={closingId ? handleCloseSubmit : handleAddTrade}
-      onFormCancel={handleCancelForm}
-      pairs={pairNames} policies={policies} editViolations={editViolations}
-      editing={editing} closingId={closingId}
-      mobileTabContent={mobileTabContent}
-      overlays={
-        <>
-          <PwaPrompt />
-          <ConfirmDialog
-            open={confirmState.open}
-            title="确认删除"
-            message="删除后无法恢复，确定要继续吗？"
-            onConfirm={handleConfirmDelete}
-            onCancel={cancelDelete}
-          />
-        </>
-      }
-    >
-      {/* Desktop tab content */}
-      <div key={tab} className="tab-enter">
-        {tab === "record" && (
-          <div>
-            <TradeFilter filter={tradeFilter} onChange={handleFilterChange} pairs={pairNames} />
-            <ExportBar onImported={reloadData} />
-            <PsychologyPanel
-              trades={allTrades}
-              pairs={pairNames}
-              spreadCostMap={spreadCostMap}
-              onAddMissed={handleAddMissed}
-              onDeleteTrade={confirmDeleteTrade}
-            />
-            <TradingViewChart key={theme} theme={theme} />
-            <OpenPositions openTrades={openTrades} onClose={handleCloseTrade} onDelete={confirmDeleteTrade} />
-            {!showForm && (
-              <button
-                onClick={() => { setEditing(null); setClosingId(null); setShowForm(true) }}
-                className="bg-accent text-white px-6 py-3 rounded-xl text-sm font-semibold cursor-pointer
-                  hover:brightness-110 transition-all duration-200 mb-5">
-                + 记录交易
-              </button>
-            )}
-            {showForm && (
-              <TradeForm
-                key={editing || closingId || 'new'}
-                initial={formInitial}
-                editing={!!editing}
-                mode={formMode}
-                pairs={pairNames}
-                policies={policies}
-                initialViolations={editing ? editViolations : []}
-                onSubmit={closingId ? handleCloseSubmit : handleAddTrade}
-                onCancel={handleCancelForm}
-              />
-            )}
-            <TradeTable trades={pagedTrades.filter(t => t.status === 'closed')} onEdit={handleEditTrade} onDelete={confirmDeleteTrade} spreadCostMap={spreadCostMap} pagination={tradePagination} onPageChange={handlePageChange} />
-          </div>
-        )}
-        {tab === "stats" && <Dashboard trades={closedTrades} spreadCostMap={spreadCostMap} theme={theme} />}
-        {tab === "weekly" && <WeeklyNotes notes={notes} onAdd={handleAddNote} onDelete={confirmDeleteNote} />}
-        {tab === "monthly" && <MonthlyNotes notes={monthlyNotes} onAdd={handleAddMonthlyNote} onDelete={confirmDeleteMonthlyNote} />}
-        {tab === "policy" && <Policies />}
-        {tab === "settings" && <Settings pairs={pairs} onPairsChange={setPairs} />}
+  return <div className="min-h-screen bg-bg text-text pb-20 sm:pb-0">
+    <header className="sticky top-0 z-40 bg-header-bg border-b border-border backdrop-blur-xl">
+      <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div><h1 className="text-lg font-bold">交易手记</h1><p className="text-[11px] text-muted">写下判断，回头看执行</p></div>
+        <div className="hidden sm:flex items-center gap-1">{[['record', '记录'], ['history', '交易记录'], ['calendar', '日历'], ['stats', '统计'], ['settings', '设置']].map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`rounded-lg px-3 py-2 text-sm cursor-pointer ${tab === key ? 'bg-accent/15 text-accent font-semibold' : 'text-muted hover:text-text'}`}>{label}</button>)}</div>
+        <div className="flex items-center gap-2"><button onClick={toggleTheme} className="text-xs text-muted cursor-pointer">{theme === 'dark' ? '亮色' : '暗色'}</button><button onClick={logout} className="text-xs text-muted cursor-pointer">退出</button></div>
       </div>
-    </Layout>
-  )
+    </header>
+    <main className="max-w-4xl mx-auto px-3 sm:px-4 py-5 sm:py-7">
+      {loadError && <div className="mb-4 p-3 rounded-lg bg-red/10 text-red text-sm" role="alert">{loadError}</div>}
+      {loading && <p className="text-sm text-muted mb-4">正在读取交易…</p>}
+      {tab === 'record' && <div className="space-y-5">
+        {showForm ? <TradeForm key={editing?.id || 'new'} initial={editing} pairs={pairs.map(pair => pair.name)} weekGoal={weekGoal} onSave={saveTrade} onCancel={cancelForm} />
+          : <button onClick={beginNew} className="w-full sm:w-auto bg-accent text-white rounded-xl px-6 py-3 text-sm font-semibold cursor-pointer">+ 记录交易</button>}
+        <section><div className="flex items-center justify-between mb-3"><h2 className="text-sm font-semibold">最近记录</h2><button onClick={() => setTab('history')} className="text-xs text-accent cursor-pointer">全部交易 →</button></div><div className="space-y-2">{trades.slice(0, 5).map(trade => <JournalCard key={trade.id} trade={trade} onEdit={beginEdit} onDelete={deleteTrade} />)}{!trades.length && !loading && <p className="bg-card border border-border rounded-xl p-5 text-sm text-muted">本月还没有记录。先写下一笔交易的入场判断。</p>}</div></section>
+      </div>}
+      {tab === 'history' && <div className="space-y-6">
+        <div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold">交易记录</h2><p className="text-xs text-muted mt-1">保留原有明细，也可以按顺序对着截图复盘。</p></div><button disabled={!allTrades.length} onClick={() => setReviewId(allTrades[0]?.id)} className="bg-accent text-white rounded-lg px-4 py-2 text-xs cursor-pointer disabled:opacity-50">逐笔复盘</button></div>
+        {legacyEditing && <div><LegacyTradeForm key={legacyEditing.id} initial={legacyEditing} editing={!legacyClosing} mode={legacyClosing ? 'close' : 'edit'} pairs={pairs.map(pair => pair.name)} policies={[]} initialViolations={[]} onSubmit={saveLegacyTrade} onCancel={() => { setLegacyEditing(null); setLegacyClosing(false) }} /><TradeImageEditor tradeId={legacyEditing.id} onChanged={() => loadMonth(month)} /></div>}
+        <OpenPositions openTrades={legacyOpen} onClose={beginLegacyClose} onDelete={deleteTrade} />
+        {quickTrades.length > 0 && <section><h3 className="text-sm font-semibold mb-3">轻量手记 · {quickTrades.length} 笔</h3><div className="space-y-2">{quickTrades.map(trade => <JournalCard key={trade.id} trade={trade} onEdit={beginEdit} onDelete={deleteTrade} />)}</div></section>}
+        {legacyClosed.length > 0 && <details open className="bg-card border border-border rounded-xl p-4"><summary className="text-sm font-semibold cursor-pointer mb-3">原有交易明细 · {legacyClosed.length} 笔</summary><TradeTable trades={legacyClosed} onEdit={beginEdit} onDelete={deleteTrade} spreadCostMap={spreadCostMap} /></details>}
+        {legacyMissed.length > 0 && <section><h3 className="text-sm font-semibold mb-3">踏空记录</h3><div className="space-y-2">{legacyMissed.map(trade => <JournalCard key={trade.id} trade={trade} onEdit={beginEdit} onDelete={deleteTrade} />)}</div></section>}
+        {!allTrades.length && !loading && <p className="bg-card border border-border rounded-xl p-5 text-sm text-muted">还没有交易记录。</p>}
+      </div>}
+      {tab === 'calendar' && <CalendarView month={month} trades={trades} selectedDay={selectedDay} onSelectDay={setSelectedDay} onMonthChange={changeMonth} onEdit={beginEdit} onDelete={deleteTrade} />}
+      {tab === 'stats' && <div className="space-y-6"><RStatsPanel trades={allTrades} theme={theme} /><div><h2 className="text-base font-semibold mb-3">美元统计</h2><Dashboard trades={dollarTrades} spreadCostMap={spreadCostMap} theme={theme} /></div></div>}
+      {tab === 'settings' && <div className="space-y-6"><WeeklyGoalSettings onCurrentGoalChange={setWeekGoal} /><div className="bg-card border border-border rounded-xl p-4 sm:p-5"><Settings pairs={pairs} onPairsChange={setPairs} /></div><details className="bg-card border border-border rounded-xl p-4"><summary className="text-sm cursor-pointer">数据导入与导出</summary><div className="mt-4"><ExportBar onImported={() => Promise.all([loadMonth(month), loadAll()])} /></div></details></div>}
+    </main>
+    <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border grid grid-cols-5 text-center pb-[env(safe-area-inset-bottom)]">{[['record', '记录'], ['history', '交易'], ['calendar', '日历'], ['stats', '统计'], ['settings', '设置']].map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`py-3 text-xs cursor-pointer ${tab === key ? 'text-accent font-semibold' : 'text-muted'}`}>{label}</button>)}</nav>
+    {reviewId && <ReviewOverlay trades={allTrades} initialId={reviewId} pairs={pairs.map(pair => pair.name)} weekGoal={weekGoal} onClose={() => setReviewId(null)} onSaveQuick={(trade, form, images) => saveTrade(form, images, trade)} onSaveLegacy={saveReviewLegacyTrade} />}
+    <PwaPrompt />
+  </div>
 }
 
 export default function App() {
-  return (
-    <ToastProvider>
-      <AppContent />
-    </ToastProvider>
-  )
+  return <ToastProvider><AppContent /></ToastProvider>
 }

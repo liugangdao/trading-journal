@@ -33,7 +33,10 @@ export function calcTrade(t, spreadCostMap) {
   const riskDollars = riskAmount > 0
     ? riskAmount
     : (stopPips > 0 && dollarPerPip > 0 ? stopPips * dollarPerPip : 0)
-  const rMultiple = riskDollars > 0 ? Math.round(netPnl / riskDollars * 100) / 100 : null
+  const recordedR = t.result_r == null || t.result_r === '' ? null : Number(t.result_r)
+  const rMultiple = Number.isFinite(recordedR) && recordedR !== null
+    ? recordedR
+    : riskDollars > 0 ? Math.round(netPnl / riskDollars * 100) / 100 : null
 
   return {
     ...t,
@@ -67,9 +70,10 @@ export function calcStats(trades, spreadCostMap) {
     : 0
 
   // Breakdowns
-  const byPair = {}; const byStrat = {}; const byEmo = {}; const byDay = {}; const byTf = {}
+  const byPair = {}; const byEmo = {}; const byDay = {}
   computed.forEach(t => {
-    for (const [map, key] of [[byPair, t.pair],[byStrat, t.strategy],[byEmo, t.emotion],[byDay, t.weekday],[byTf, t.timeframe]]) {
+    for (const [map, key] of [[byPair, t.pair],[byEmo, t.emotion],[byDay, t.weekday]]) {
+      if (key == null || key === '') continue
       if (!map[key]) map[key] = { count: 0, wins: 0, totalPnl: 0, totalR: 0, rCount: 0 }
       map[key].count++
       if (t.netPnl > 0) map[key].wins++
@@ -88,39 +92,19 @@ export function calcStats(trades, spreadCostMap) {
     avgR: v.rCount > 0 ? Math.round(v.totalR / v.rCount * 100) / 100 : 0
   }))
 
-  // Cumulative PnL curve (sorted by open_time)
+  // 按交易日合并累计美元盈亏，同一天只保留一个曲线点。
   let cumPnl = 0
   const sorted = [...computed].sort((a, b) => a.open_time.localeCompare(b.open_time) || a.id - b.id)
-  const cumData = sorted.map((t, i) => { cumPnl += t.netPnl; return { idx: i + 1, date: t.open_time.slice(0, 10), pnl: Math.round(cumPnl * 100) / 100 } })
-
-  // Streaks (based on time-sorted trades)
-  let currentStreak = { type: null, count: 0 }
-  let maxWinStreak = 0
-  let maxLossStreak = 0
-  let winStreak = 0
-  let lossStreak = 0
-  for (const t of sorted) {
-    if (t.netPnl > 0) {
-      winStreak++
-      lossStreak = 0
-      if (winStreak > maxWinStreak) maxWinStreak = winStreak
+  const cumData = []
+  for (const trade of sorted) {
+    const date = trade.open_time.slice(0, 10)
+    cumPnl += trade.netPnl
+    const lastDay = cumData[cumData.length - 1]
+    if (lastDay?.date === date) {
+      lastDay.pnl = Math.round(cumPnl * 100) / 100
+      lastDay.count++
     } else {
-      lossStreak++
-      winStreak = 0
-      if (lossStreak > maxLossStreak) maxLossStreak = lossStreak
-    }
-  }
-  if (sorted.length > 0) {
-    const last = sorted[sorted.length - 1]
-    currentStreak.type = last.netPnl > 0 ? 'win' : 'loss'
-    currentStreak.count = 1
-    for (let i = sorted.length - 2; i >= 0; i--) {
-      const isWin = sorted[i].netPnl > 0
-      if ((currentStreak.type === 'win' && isWin) || (currentStreak.type === 'loss' && !isWin)) {
-        currentStreak.count++
-      } else {
-        break
-      }
+      cumData.push({ date, pnl: Math.round(cumPnl * 100) / 100, count: 1 })
     }
   }
 
@@ -176,15 +160,10 @@ export function calcStats(trades, spreadCostMap) {
     profitFactor: losses.length > 0 ? Math.round(Math.abs(wins.reduce((s, t) => s + t.netPnl, 0) / losses.reduce((s, t) => s + t.netPnl, 0)) * 100) / 100 : 0,
     avgR,
     byPair: toArr(byPair).sort((a, b) => b.pnl - a.pnl),
-    byStrat: toArr(byStrat).sort((a, b) => b.pnl - a.pnl),
     byEmo: toArr(byEmo).filter(x => x.count > 0),
     byDay: toArr(byDay),
-    byTf: toArr(byTf).filter(x => x.count > 0),
     cumData,
     computed,
-    currentStreak,
-    maxWinStreak,
-    maxLossStreak,
     maxDrawdown: Math.round(maxDrawdown * 100) / 100,
     weeklyTrend,
   }

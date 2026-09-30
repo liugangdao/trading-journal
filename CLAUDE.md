@@ -22,7 +22,7 @@ Full-stack multi-user trading journal for forex/commodities. React 19 SPA served
 - **Client**: React 19 + Vite 7 + Tailwind CSS v4 + Recharts
 - **Server**: Express 5 + better-sqlite3 (WAL mode, foreign keys)
 - **Auth**: Session-based (express-session + bcryptjs) with SQLite session store. Cookie: `connect.sid`, 30-day expiry
-- **DB**: SQLite at `./data/journal.db` — 8 tables: `users`, `trades`, `weekly_notes`, `monthly_notes`, `pairs`, `policies`, `trade_violations`, plus session table
+- **DB**: SQLite at `./data/journal.db` — 轻量交易字段增量保存在 `trades`；截图保存在 `trade_images`，周目标保存在 `weekly_goals`。旧复盘与政策表保留兼容历史数据。
 - **Build**: Vite outputs to `server/public`; Express serves static files with SPA fallback
 - **Dev proxy**: Vite proxies `/api/*` → `http://localhost:3001`
 - **Deploy**: Docker multi-stage build; Fly.io (region: nrt, volume mounted at `/app/data`)
@@ -41,9 +41,10 @@ All under `/api` prefix (defined in `server/routes/`). Auth routes are public; a
 |-------|---------|-------|
 | `/api/auth` | register, login, logout, me, claim-data, orphan-count | Public — no auth required |
 | `/api/trades` | GET, POST, PUT/:id, DELETE/:id | Sorting via `?sort=&order=` |
+| `/api/journal` | GET by month, POST, PUT/:id, DELETE/:id, image endpoints, weekly goals | 轻量交易、截图和周目标；均需登录 |
 | `/api/notes` | GET, POST, DELETE/:id | Weekly notes (week field: `YYYY-Www`) |
 | `/api/monthly-notes` | GET, POST, DELETE/:id | Monthly notes (month field: `YYYY-MM`) |
-| `/api/pairs` | GET, POST, PUT/:id, DELETE/:id | Per-user currency pair config with spread costs |
+| `/api/pairs` | GET, POST, PUT/:id, DELETE/:id | 用户品种名称管理；历史点差字段仅作兼容保留 |
 | `/api/policies` | GET, POST, PUT/:id, DELETE/:id, PUT/:id/toggle | Policy CRUD + toggle active |
 | `/api/trades/:id/violations` | GET, PUT | Trade violation records (policy_ids array) |
 | `/api/violations/stats` | GET | Violation statistics |
@@ -54,13 +55,13 @@ Trades have `status`: `open` or `closed`. Closed trades require `exit_price` and
 
 ## Frontend Patterns
 
-- **State**: All in `App.jsx` — auth state, trades, notes, monthlyNotes, pairs, policies, tab navigation, form state. No Redux/Zustand.
+- **State**: `App.jsx` 管理登录、当前月份交易、品种、周目标、记录/日历/设置导航和表单状态。无 Redux/Zustand。
 - **Auth flow**: `App.jsx` checks session on mount via `api.getMe()`. Global 401 handler triggers logout. `AuthPage.jsx` handles login/register toggle. `LandingPage.jsx` shown to unauthenticated visitors.
 - **API client**: `client/src/hooks/useApi.js` — fetch wrapper with `credentials: 'include'` for session cookies, global 401 interception
-- **Calculations**: `client/src/lib/calc.js` — `calcTrade()` (R-multiple, pips, spread, net P&L) and `calcStats()` (aggregated stats, breakdowns by pair/strategy/emotion/day/timeframe)
+- **Calculations**: `client/src/lib/calc.js` 保留旧交易的 R、美元盈亏和按日累计美元曲线；`client/src/lib/rStats.js` 汇总全部有效 R 记录，计算胜率、平均盈利/亏损 R、期望值、违规率与期望日曲线。
 - **Constants**: `client/src/lib/constants.js` — strategies, emotions, scores, timeframes (pairs now come from DB per-user)
-- **Tabs**: record (trade form + table + open positions), stats (dashboard), weekly, monthly, policy, settings
-- **Trade form modes**: open (new position), close (fill exit fields), edit (modify closed trade)
+- **Tabs**: record、history、calendar、stats、settings。旧交易记录与美元统计保留，history 提供图片在上、说明在下的逐笔复盘及页内编辑；统计移除连胜、策略分析和周期分析。旧复盘、政策和 TradingView 入口已移除，旧表与接口仍保留。
+- **Trade form**: 时间/品种、方向、市场环境、Setup、入场理由、失效条件、退出原因、最终 R 和/或美元盈亏、可多选执行标签；提前或手动平仓需写原因，结束后另答遮住盈亏是否为好交易。旧 `risk_plan` 和 `score` 保留兼容历史记录；图片通过独立登录接口读取。
 - **Theme**: Dark by default with light mode toggle (`client/src/hooks/useTheme.js`)
 - **UI components**: `client/src/components/ui/` — Input, Select, Tab, KpiCard
 
@@ -72,7 +73,7 @@ Trades have `status`: `open` or `closed`. Closed trades require `exit_price` and
 - **No test framework** configured
 - **Direction values**: 多 (Buy), 空 (Sell)
 - **Score values**: A–D (完美执行 through 严重违规)
-- **Per-user data isolation**: All DB queries filter by `user_id`; new users get seeded with default pairs (23) and policies (14) via `seedUserData()` in `server/db.js`
+- **Per-user data isolation**: All DB queries filter by `user_id`; new users get five default pairs and legacy policies via `seedUserData()` in `server/db.js`. 未修改的旧版 23 品种默认清单会收敛为五个，用户自定义清单与历史交易保留。
 
 ## Database Schema
 
@@ -82,7 +83,7 @@ Schema auto-created in `server/db.js` with migrations applied inline. Key tables
 
 **trades**: `user_id`, `date`, `pair`, `direction`, `strategy`, `timeframe`, `lots`, `entry`, `stop`, `target`, `exit_price`, `gross_pnl`, `swap`, `score`, `emotion`, `notes`, `status` (open/closed)
 
-**pairs**: `user_id`, `name`, `spread_cost` (default 5), `sort_order` — per-user pair configuration
+**pairs**: `user_id`, `name`, `spread_cost`（旧字段，仅兼容）, `sort_order` — 按用户管理品种名称；页面不显示点差成本
 
 **policies**: `user_id`, `category`, `title`, `content`, `sort_order`, `is_active`
 

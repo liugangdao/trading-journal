@@ -1,4 +1,4 @@
-export const PAIRS = ["EUR/USD","GBP/USD","USD/JPY","AUD/USD","NZD/USD","USD/CAD","USD/CHF","EUR/GBP","EUR/JPY","GBP/JPY","AUD/JPY","NZD/JPY","CAD/JPY","AUD/CAD","EUR/AUD","USD/CNH","XAU/USD","XAG/USD","USOil","UKOil","NGAS","Copper","BABA.hk"]
+export const PAIRS = ["XAUUSD", "EURUSD", "USDCAD", "BTCUSD", "USOIL"]
 
 export const DIRECTIONS = ["多(Buy)","空(Sell)"]
 

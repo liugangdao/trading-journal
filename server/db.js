@@ -95,15 +95,8 @@ db.exec(`
   );
 `)
 
-// Default seed data for new user registration
-const defaultPairs = {
-  "EUR/USD": 3.5, "GBP/USD": 4, "USD/JPY": 3, "AUD/USD": 3.5,
-  "NZD/USD": 4.5, "USD/CAD": 4, "USD/CHF": 4, "EUR/GBP": 4.5,
-  "EUR/JPY": 5, "GBP/JPY": 6, "AUD/JPY": 5, "NZD/JPY": 5,
-  "CAD/JPY": 5, "AUD/CAD": 4, "EUR/AUD": 5, "USD/CNH": 8,
-  "XAU/USD": 12, "XAG/USD": 10, "USOil": 5, "UKOil": 6,
-  "NGAS": 8, "Copper": 5, "BABA.hk": 1
-}
+// 新注册用户只预置常用的五个品种。
+const defaultPairs = ['XAUUSD', 'EURUSD', 'USDCAD', 'BTCUSD', 'USOIL']
 
 const defaultPolicies = [
   { category: 'rules', title: '每日最大亏损不超过账户净值的2%', content: '单日累计亏损达到账户净值2%时，立即停止交易，避免情绪化操作导致更大亏损。', phase: 'both' },
@@ -127,8 +120,8 @@ export function seedUserData(userId) {
   const insertPair = db.prepare('INSERT INTO pairs (user_id, name, spread_cost, sort_order) VALUES (?, ?, ?, ?)')
   const insertPolicy = db.prepare('INSERT INTO policies (user_id, category, title, content, sort_order, phase) VALUES (?, ?, ?, ?, ?, ?)')
   const seed = db.transaction(() => {
-    Object.entries(defaultPairs).forEach(([name, cost], i) => {
-      insertPair.run(userId, name, cost, i)
+    defaultPairs.forEach((name, i) => {
+      insertPair.run(userId, name, 0, i)
     })
     defaultPolicies.forEach((p, i) => {
       insertPolicy.run(userId, p.category, p.title, p.content, i, p.phase)
@@ -277,5 +270,56 @@ if (tvSchema && tvSchema.sql && tvSchema.sql.includes('trades_old_time')) {
     DROP TABLE trade_violations_old;
   `)
 }
+
+// 轻量交易字段增量迁移，旧记录和旧复盘表保持原样。
+const journalColumns = new Set(db.prepare('PRAGMA table_info(trades)').all().map(column => column.name))
+for (const [name, definition] of Object.entries({
+  market_environment: 'TEXT',
+  setup: 'TEXT',
+  entry_reason: 'TEXT',
+  invalidation: 'TEXT',
+  risk_plan: 'TEXT',
+  result_r: 'REAL',
+  execution_note: 'TEXT',
+  exit_reason: 'TEXT',
+  execution_tags: 'TEXT',
+  good_trade: 'INTEGER',
+})) {
+  if (!journalColumns.has(name)) db.exec(`ALTER TABLE trades ADD COLUMN ${name} ${definition}`)
+}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS trade_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trade_id INTEGER NOT NULL REFERENCES trades(id) ON DELETE CASCADE,
+    mime_type TEXT NOT NULL,
+    image_data BLOB NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_trade_images_trade ON trade_images(trade_id);
+  CREATE TABLE IF NOT EXISTS weekly_goals (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    week_key TEXT NOT NULL,
+    content TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, week_key)
+  );
+  CREATE INDEX IF NOT EXISTS idx_trades_user_time ON trades(user_id, open_time);
+`)
+
+// 仅将未经修改的旧版完整预置清单收敛为五个品种，保留用户自定义清单和历史交易。
+const oldDefaultNames = new Set([
+  'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'NZD/USD', 'USD/CAD', 'USD/CHF',
+  'EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'AUD/JPY', 'NZD/JPY', 'CAD/JPY', 'AUD/CAD',
+  'EUR/AUD', 'USD/CNH', 'XAU/USD', 'XAG/USD', 'USOil', 'UKOil', 'NGAS', 'Copper', 'BABA.hk',
+])
+const migrateDefaultPairs = db.transaction(userId => {
+  const current = db.prepare('SELECT name FROM pairs WHERE user_id = ?').all(userId)
+  if (current.length !== oldDefaultNames.size || !current.every(pair => oldDefaultNames.has(pair.name))) return
+  db.prepare('DELETE FROM pairs WHERE user_id = ?').run(userId)
+  const insert = db.prepare('INSERT INTO pairs (user_id, name, spread_cost, sort_order) VALUES (?, ?, 0, ?)')
+  defaultPairs.forEach((name, index) => insert.run(userId, name, index))
+})
+db.prepare('SELECT id FROM users').all().forEach(user => migrateDefaultPairs(user.id))
 
 export default db

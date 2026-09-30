@@ -1,262 +1,156 @@
-import { useState } from 'react'
-import Input from './ui/Input'
-import Select from './ui/Select'
-import { PAIRS as DEFAULT_PAIRS, DIRECTIONS, STRATEGIES, TIMEFRAMES, SCORES, EMOTIONS, PHASE_LABELS } from '../lib/constants'
-import { calcTrade } from '../lib/calc'
-import LivermoreQuote from './LivermoreQuote'
+import { useEffect, useRef, useState } from 'react'
+import { api } from '../hooks/useApi'
+import { EXIT_REASONS, EXECUTION_TAGS, getExecutionTags } from '../lib/journal'
 
-const now = () => {
-  const d = new Date()
-  return `${d.toISOString().split('T')[0]}T${d.toTimeString().slice(0, 5)}`
+const environments = ['趋势', '区间', '突破', '趋势末端']
+const setups = ['突破', '突破回踩', 'Vegas回调', 'H2/L2', '其他']
+const imageTypes = ['image/png', 'image/jpeg', 'image/webp']
+
+function localTime() {
+  const date = new Date()
+  const pad = value => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-export function emptyTrade(pairs) {
-  const pairList = pairs && pairs.length > 0 ? pairs : DEFAULT_PAIRS
+export function emptyTrade(pairs = []) {
   return {
-    open_time: now(), close_time: "", pair: pairList[0], direction: "多(Buy)",
-    strategy: "趋势跟踪", timeframe: "H4", lots: "", entry: "", stop: "", target: "",
-    exit_price: "", gross_pnl: "", swap: "0", score: "B-基本执行", emotion: "冷静理性", notes: "",
-    status: "closed", risk_amount: ""
+    open_time: localTime(), pair: pairs[0] || 'XAUUSD', direction: '多(Buy)',
+    market_environment: '', setup: '', entry_reason: '', invalidation: '',
+    exit_reason: '', execution_note: '', execution_tags: [],
+    result_r: '', gross_pnl: '', good_trade: null,
   }
 }
 
-export default function TradeForm({ initial, editing, mode = "edit", pairs, policies, initialViolations = [], onSubmit, onCancel }) {
-  const pairOptions = pairs && pairs.length > 0 ? pairs : DEFAULT_PAIRS
-  const [form, setForm] = useState(initial || emptyTrade())
-  const [error, setError] = useState("")
-  const [openOnly, setOpenOnly] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  // Track confirmed (checked) policies — unchecked = violation
-  // In edit mode, pre-check policies that were NOT violated
-  const [confirmedPolicies, setConfirmedPolicies] = useState(() => {
-    if (mode === "edit") {
-      const filtered = (policies || []).filter(p => p.is_active || initialViolations.includes(p.id))
-      return filtered.filter(p => !initialViolations.includes(p.id)).map(p => p.id)
-    }
-    return []
-  })
-  const uf = (k) => (v) => { setForm(f => ({ ...f, [k]: v })); setError("") }
+function initialForm(initial, pairs) {
+  if (!initial) return emptyTrade(pairs)
+  return {
+    open_time: initial.open_time?.slice(0, 16) || localTime(),
+    pair: initial.pair || pairs[0] || 'XAUUSD', direction: initial.direction || '多(Buy)',
+    market_environment: initial.market_environment || '',
+    setup: initial.setup || '',
+    entry_reason: initial.entry_reason || initial.notes || '',
+    invalidation: initial.invalidation || '',
+    exit_reason: initial.exit_reason || '',
+    execution_note: initial.execution_note || '',
+    execution_tags: getExecutionTags(initial),
+    result_r: initial.result_r ?? '',
+    gross_pnl: initial.gross_pnl ?? '',
+    good_trade: initial.good_trade == null ? null : Boolean(initial.good_trade),
+  }
+}
 
-  const isClose = mode === "close"
-  const isNew = mode === "new"
-  const isEdit = mode === "edit"
+const inputClass = 'w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent'
 
-  // Filter policies by phase for violation checker
-  const filteredPolicies = (policies || []).filter(p => {
-    if (isEdit) return p.is_active || initialViolations.includes(p.id)
-    if (!p.is_active) return false
-    if (isClose) return p.phase === 'exit' || p.phase === 'both'
-    return p.phase === 'entry' || p.phase === 'both' // new/open mode
-  })
+export default function TradeForm({ initial, pairs = [], weekGoal, onSave, onCancel }) {
+  const [form, setForm] = useState(() => initialForm(initial, pairs))
+  const [pending, setPending] = useState([])
+  const [images, setImages] = useState([])
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const pendingRef = useRef([])
 
-  const hideExit = isNew && openOnly
+  useEffect(() => () => pendingRef.current.forEach(item => URL.revokeObjectURL(item.url)), [])
+  useEffect(() => {
+    if (initial?.id) api.getJournalImages(initial.id).then(setImages).catch(() => setImages([]))
+  }, [initial?.id])
 
-  const REQUIRED_CLOSE = ["exit_price", "gross_pnl"]
-  const REQUIRED_FULL = ["entry", "stop", "exit_price", "gross_pnl"]
-  const REQUIRED_OPEN_ONLY = ["entry", "stop"]
-
-  const requiredFields = isClose ? REQUIRED_CLOSE : hideExit ? REQUIRED_OPEN_ONLY : REQUIRED_FULL
-
-  const handleSubmit = async () => {
-    const missing = requiredFields.filter(k => !form[k] && form[k] !== 0)
-    if (missing.length) {
-      setError("请填写所有必填字段（带 * 的项）")
+  const change = (field, value) => {
+    setForm(current => {
+      const next = { ...current, [field]: value }
+      if ((field === 'result_r' || field === 'gross_pnl') && next.result_r === '' && next.gross_pnl === '') {
+        next.good_trade = null
+      }
+      return next
+    })
+    setError('')
+  }
+  const toggleTag = tag => {
+    setForm(current => ({ ...current, execution_tags: current.execution_tags.includes(tag)
+      ? current.execution_tags.filter(item => item !== tag)
+      : [...current.execution_tags, tag] }))
+    setError('')
+  }
+  const addFiles = files => {
+    const selected = [...files]
+    if (selected.some(file => !imageTypes.includes(file.type) || file.size > 5 * 1024 * 1024)) {
+      setError('图片仅支持 PNG、JPEG、WebP，单张不超过 5 MB')
       return
     }
-    const payload = { ...form }
-    if (hideExit) payload.status = "open"
-    if (isClose) payload.status = "closed"
-    if (isClose && !payload.close_time) payload.close_time = now()
-    // Unchecked policies = violations
-    payload.violations = filteredPolicies
-      .filter(p => !confirmedPolicies.includes(p.id))
-      .map(p => p.id)
-    setSubmitting(true)
-    try {
-      await onSubmit(payload)
-    } finally {
-      setSubmitting(false)
+    if (pending.length + images.length + selected.length > 8) {
+      setError('每笔交易最多保存 8 张图片')
+      return
     }
+    const next = selected.map(file => ({ file, url: URL.createObjectURL(file) }))
+    pendingRef.current.push(...next)
+    setPending(current => [...current, ...next])
+  }
+  const onPaste = event => {
+    const files = [...event.clipboardData.items].filter(item => item.kind === 'file').map(item => item.getAsFile()).filter(Boolean)
+    if (files.length) { event.preventDefault(); addFiles(files) }
+  }
+  const removePending = item => {
+    URL.revokeObjectURL(item.url)
+    pendingRef.current = pendingRef.current.filter(current => current !== item)
+    setPending(current => current.filter(candidate => candidate !== item))
+  }
+  const removeImage = async imageId => {
+    try { await api.deleteJournalImage(initial.id, imageId); setImages(current => current.filter(image => image.id !== imageId)) }
+    catch (cause) { setError(cause.message) }
+  }
+  const submit = async event => {
+    event.preventDefault()
+    if (!form.entry_reason.trim() || !form.invalidation.trim()) return setError('请填写入场理由和失效条件')
+    const hasResult = form.result_r !== '' || form.gross_pnl !== ''
+    if (hasResult && (!form.exit_reason || !form.execution_tags.length || form.good_trade == null)) return setError('结束交易时请填写退出原因、执行评价，并回答是否为好交易')
+    if (hasResult && (form.exit_reason === '手动平仓' || form.execution_tags.includes('提前平仓')) && !form.execution_note.trim()) return setError('请写明提前或手动平仓的原因')
+    setSaving(true)
+    try { await onSave(form, pending.map(item => item.file)) }
+    catch (cause) { setError(cause.message || '保存失败，请重试') }
+    finally { setSaving(false) }
   }
 
-  const showPreview = !hideExit && form.entry && form.stop && form.exit_price && form.gross_pnl
-  const preview = showPreview ? calcTrade(form) : null
-
-  const title = isClose ? "平仓记录" : editing ? "编辑交易" : "记录交易"
-  const submitText = isClose ? "确认平仓" : editing ? "保存修改" : hideExit ? "记录开仓" : "记录交易"
-
-  const isRequired = (field) => error && requiredFields.includes(field) && !form[field]
-
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 mb-6">
-      <h3 className="text-base font-bold mb-5">{title}</h3>
-      {!isEdit && <LivermoreQuote />}
-
-      {/* Close mode: read-only summary of open position */}
-      {isClose && (
-        <div className="mb-5 p-4 bg-bg rounded-xl border border-border">
-          <div className="text-[11px] text-muted mb-2 font-medium">开仓信息</div>
-          <div className="flex gap-2 sm:gap-5 flex-wrap text-sm">
-            <span><span className="text-muted">品种:</span> <b>{form.pair}</b></span>
-            <span><span className="text-muted">方向:</span> <b>{form.direction}</b></span>
-            <span><span className="text-muted">入场价:</span> <b>{form.entry}</b></span>
-            <span><span className="text-muted">止损价:</span> <b>{form.stop}</b></span>
-            {form.target && <span><span className="text-muted">目标价:</span> <b>{form.target}</b></span>}
-            {form.lots && <span><span className="text-muted">手数:</span> <b>{form.lots}</b></span>}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
-        {/* Open and Edit mode fields */}
-        {!isClose && (
-          <>
-            <Field label="开仓时间"><Input type="datetime-local" value={form.open_time} onChange={uf("open_time")} /></Field>
-            <Field label="品种"><Select value={form.pair} onChange={uf("pair")} options={pairOptions} /></Field>
-            <Field label="方向"><Select value={form.direction} onChange={uf("direction")} options={DIRECTIONS} /></Field>
-            <Field label="策略"><Select value={form.strategy} onChange={uf("strategy")} options={STRATEGIES} /></Field>
-            <Field label="周期"><Select value={form.timeframe} onChange={uf("timeframe")} options={TIMEFRAMES} /></Field>
-            <Field label="手数"><Input value={form.lots} onChange={uf("lots")} placeholder="0.1" /></Field>
-            <Field label="入场价 *" required={isRequired("entry")}><Input value={form.entry} onChange={uf("entry")} placeholder="1.03250" /></Field>
-            <Field label="止损价 *" required={isRequired("stop")}><Input value={form.stop} onChange={uf("stop")} placeholder="1.02950" /></Field>
-            <Field label="目标价"><Input value={form.target} onChange={uf("target")} placeholder="选填" /></Field>
-            {hideExit && (
-              <Field label="本单风险($)"><Input value={form.risk_amount} onChange={uf("risk_amount")} placeholder="如: 150" /></Field>
-            )}
-          </>
-        )}
-
-        {/* Exit fields: hidden in open-only mode */}
-        {!hideExit && (
-          <>
-            <Field label="出场价 *" required={isRequired("exit_price")}><Input value={form.exit_price} onChange={uf("exit_price")} placeholder="1.03720" /></Field>
-            <Field label="平仓时间"><Input type="datetime-local" value={form.close_time || now()} onChange={uf("close_time")} /></Field>
-            <Field label="盈亏 (USD) *" required={isRequired("gross_pnl")}><Input value={form.gross_pnl} onChange={uf("gross_pnl")} placeholder="235" /></Field>
-            <Field label="库存费"><Input value={form.swap} onChange={uf("swap")} placeholder="0" /></Field>
-            <Field label="执行评分"><Select value={form.score} onChange={uf("score")} options={SCORES} /></Field>
-          </>
-        )}
-
-        {/* Emotion: shown in all modes */}
-        <Field label="交易情绪"><Select value={form.emotion} onChange={uf("emotion")} options={EMOTIONS} /></Field>
+    <form onSubmit={submit} onPaste={onPaste} className="bg-card border border-border rounded-2xl p-4 sm:p-6 space-y-5">
+      <div>
+        <h2 className="text-lg font-bold">{initial?.id ? '编辑交易' : '记一笔交易'}</h2>
+        <p className="text-xs text-muted mt-1">先写判断，结束后再补结果。核心是入场理由、失效条件和执行评价。</p>
       </div>
-
-      <div className="mt-4">
-        <div className="text-[11px] text-muted mb-1">交易笔记</div>
-        <textarea
-          value={form.notes}
-          onChange={e => uf("notes")(e.target.value)}
-          placeholder={hideExit ? "入场逻辑、交易计划..." : isClose ? "出场原因、复盘总结..." : "入场逻辑、仓位管理、出场原因..."}
-          className="w-full bg-input text-text border border-border rounded-lg px-3 py-2 text-sm min-h-[60px] resize-y outline-none
-            focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all duration-200 font-sans"
-        />
+      {weekGoal && <div className="rounded-xl bg-accent/10 border border-accent/20 px-4 py-3 text-sm"><span className="text-accent font-semibold">本周目标 · </span>{weekGoal}</div>}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="text-xs text-muted">① 时间<input className={`${inputClass} mt-1`} type="datetime-local" value={form.open_time} onChange={event => change('open_time', event.target.value)} required /></label>
+        <label className="text-xs text-muted">品种<select className={`${inputClass} mt-1`} value={form.pair} onChange={event => change('pair', event.target.value)}>{[...new Set([form.pair, ...pairs])].map(pair => <option key={pair}>{pair}</option>)}</select></label>
       </div>
-
-      {/* Rule confirmation — all modes, unchecked = violation */}
-      {filteredPolicies.length > 0 && (
-        <div className="mt-4">
-          <div className="text-[11px] text-muted font-medium mb-2">
-            {isClose ? '出场纪律确认' : isEdit ? '纪律确认' : '入场纪律确认'}
-          </div>
-          <div className="p-3 bg-bg rounded-lg border border-border space-y-3">
-            {['rules', 'strategy', 'risk'].map(cat => {
-              const catPolicies = filteredPolicies.filter(p => p.category === cat)
-              if (catPolicies.length === 0) return null
-              const catLabel = cat === 'rules' ? '交易规则' : cat === 'strategy' ? '策略指南' : '风控管理'
-              return (
-                <div key={cat}>
-                  <div className="text-[11px] text-muted font-medium mb-1">{catLabel}</div>
-                  {catPolicies.map(p => (
-                    <label key={p.id} className={`flex items-center gap-2 py-0.5 cursor-pointer ${
-                      !confirmedPolicies.includes(p.id) ? 'text-red/80' : ''
-                    }`}>
-                      <input
-                        type="checkbox"
-                        checked={confirmedPolicies.includes(p.id)}
-                        onChange={e => {
-                          setConfirmedPolicies(prev =>
-                            e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id)
-                          )
-                        }}
-                        className="accent-green"
-                      />
-                      <span className="text-sm">{p.title}</span>
-                      {isEdit && p.phase !== 'both' && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                          p.phase === 'entry' ? 'bg-accent/15 text-accent' : 'bg-amber-500/15 text-amber-500'
-                        }`}>{PHASE_LABELS[p.phase]}</span>
-                      )}
-                    </label>
-                  ))}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Auto-calc preview */}
-      {preview && (
-        <div className="mt-4 p-3 bg-bg rounded-lg flex gap-2 sm:gap-5 flex-wrap text-xs font-mono">
-          <span className="text-muted">自动计算:</span>
-          <span>止损点数: <b>{preview.stopPips.toFixed(5)}</b></span>
-          <span>盈亏点数: <b className={preview.pnlPips >= 0 ? 'text-green' : 'text-red'}>{preview.pnlPips.toFixed(5)}</b></span>
-          <span>R倍数: <b className={preview.rMultiple >= 0 ? 'text-green' : 'text-red'}>{preview.rMultiple}R</b></span>
-          <span>点差: <b>${preview.spread}</b></span>
-          <span>净盈亏: <b className={preview.netPnl >= 0 ? 'text-green' : 'text-red'}>${preview.netPnl}</b></span>
-        </div>
-      )}
-
-      {/* Open-only toggle: only in new trade mode */}
-      {isNew && (
-        <label className="flex items-center gap-2 mt-4 cursor-pointer select-none">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={openOnly}
-            onClick={() => setOpenOnly(v => !v)}
-            className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${openOnly ? 'bg-accent' : 'bg-border'}`}
-          >
-            <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${openOnly ? 'translate-x-4' : ''}`} />
-          </button>
-          <span className="text-sm text-muted">仅开仓（稍后平仓）</span>
-        </label>
-      )}
-
-      {error && (
-        <div className="mt-3 text-red text-sm font-medium">{error}</div>
-      )}
-
-      <div className="flex gap-3 mt-5">
-        <button onClick={handleSubmit} disabled={submitting}
-          className={`text-white px-7 py-2.5 rounded-lg text-sm font-semibold
-            transition-all duration-200
-            ${submitting ? 'bg-muted cursor-not-allowed' : 'bg-green cursor-pointer hover:brightness-110'}`}>
-          {submitting ? (
-            <span className="flex items-center gap-2">
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-              提交中...
-            </span>
-          ) : submitText}
-        </button>
-        <button onClick={onCancel}
-          className="text-muted border border-border px-5 py-2.5 rounded-lg text-sm cursor-pointer
-            hover:text-text hover:border-muted transition-all duration-200">
-          取消
-        </button>
+      <div>
+        <div className="text-xs text-muted mb-2">② 方向</div>
+        <div className="flex gap-2">{[['多(Buy)', 'Long'], ['空(Sell)', 'Short']].map(([value, label]) => <button key={value} type="button" onClick={() => change('direction', value)} className={`rounded-xl px-5 py-2 text-sm border cursor-pointer ${form.direction === value ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{label}</button>)}</div>
       </div>
-    </div>
-  )
-}
-
-function Field({ label, children, required }) {
-  return (
-    <div>
-      <div className={`text-[11px] mb-1 ${required ? 'text-red font-semibold' : 'text-muted'}`}>{label}</div>
-      {children}
-    </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="text-xs text-muted">③ 市场环境<select className={`${inputClass} mt-1`} value={form.market_environment} onChange={event => change('market_environment', event.target.value)}><option value="">请选择</option>{environments.map(value => <option key={value}>{value}</option>)}</select></label>
+        <label className="text-xs text-muted">④ Setup<select className={`${inputClass} mt-1`} value={form.setup} onChange={event => change('setup', event.target.value)}><option value="">请选择</option>{setups.map(value => <option key={value}>{value}</option>)}</select></label>
+      </div>
+      <label className="block text-xs text-muted font-semibold">⑤ 入场理由 <span className="text-red">*</span><textarea className={`${inputClass} mt-1 min-h-16 resize-y`} value={form.entry_reason} onChange={event => change('entry_reason', event.target.value)} placeholder="1H 多头 + 15M 回调 Vegas + 突破前高收盘确认" maxLength={2000} /></label>
+      <label className="block text-xs text-muted font-semibold">⑥ 失效条件 <span className="text-red">*</span><textarea className={`${inputClass} mt-1 min-h-16 resize-y`} value={form.invalidation} onChange={event => change('invalidation', event.target.value)} placeholder="15M 重新收回区间 / 跌破起涨点" maxLength={2000} /></label>
+      <div>
+        <label className="block text-xs text-muted font-semibold">⑦ 退出原因<select className={`${inputClass} mt-1`} value={form.exit_reason} onChange={event => change('exit_reason', event.target.value)}><option value="">结束后选择</option>{EXIT_REASONS.map(reason => <option key={reason} value={reason}>{reason}</option>)}</select></label>
+        {(form.exit_reason === '手动平仓' || form.execution_tags.includes('提前平仓')) && <label className="block text-xs text-muted mt-3">为什么提前或手动平仓？<textarea className={`${inputClass} mt-1 min-h-16 resize-y`} value={form.execution_note} onChange={event => change('execution_note', event.target.value)} placeholder="当时看到了什么、为什么没有继续按原计划持有？" maxLength={2000} /></label>}
+      </div>
+      <div><div className="text-xs text-muted font-semibold mb-2">⑧ 最终结果（结束后填写）</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><label className="text-xs text-muted">R<input className={`${inputClass} mt-1`} type="number" step="any" value={form.result_r} onChange={event => change('result_r', event.target.value)} placeholder="+2.3" /></label><label className="text-xs text-muted">美元盈亏<input className={`${inputClass} mt-1`} type="number" step="any" value={form.gross_pnl} onChange={event => change('gross_pnl', event.target.value)} placeholder="+235" /></label></div></div>
+      <div><div className="text-xs text-muted font-semibold mb-2">⑨ 执行评价（可多选）</div><div className="flex flex-wrap gap-2">{EXECUTION_TAGS.map(tag => <button key={tag} type="button" aria-pressed={form.execution_tags.includes(tag)} onClick={() => toggleTag(tag)} className={`rounded-lg border px-3 py-2 text-sm cursor-pointer ${form.execution_tags.includes(tag) ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{tag}</button>)}</div></div>
+      {(form.result_r !== '' || form.gross_pnl !== '') && <div className="rounded-xl border border-border p-4">
+        <div className="text-sm font-medium mb-3">如果把盈亏结果遮住，这仍是一笔好交易吗？</div>
+        <div className="flex gap-2">{[[true, '是'], [false, '否']].map(([value, label]) => <button type="button" key={label} onClick={() => change('good_trade', value)} className={`px-5 py-2 rounded-lg border text-sm cursor-pointer ${form.good_trade === value ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{label}</button>)}</div>
+      </div>}
+      <div className="rounded-xl border border-dashed border-border p-4" tabIndex={0}>
+        <div className="text-sm font-medium">交易截图</div>
+        <p className="text-xs text-muted mt-1 mb-3">在表单中按 Ctrl+V 粘贴截图，或选择图片；每张不超过 5 MB。</p>
+        <label className="inline-block border border-border rounded-lg px-3 py-2 text-xs cursor-pointer">选择图片<input type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={event => { addFiles(event.target.files || []); event.target.value = '' }} /></label>
+        {(images.length > 0 || pending.length > 0) && <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+          {images.map(image => <div key={image.id} className="relative"><img className="w-full h-28 object-cover rounded-lg" src={`/api/journal/${initial.id}/images/${image.id}`} alt="交易截图" /><button type="button" onClick={() => removeImage(image.id)} className="absolute top-1 right-1 bg-black/70 text-white text-xs rounded px-1.5 cursor-pointer">删除</button></div>)}
+          {pending.map(item => <div key={item.url} className="relative"><img className="w-full h-28 object-cover rounded-lg" src={item.url} alt="待保存截图" /><button type="button" onClick={() => removePending(item)} className="absolute top-1 right-1 bg-black/70 text-white text-xs rounded px-1.5 cursor-pointer">移除</button></div>)}
+        </div>}
+      </div>
+      {error && <p className="text-red text-sm" role="alert">{error}</p>}
+      <div className="flex gap-3"><button disabled={saving} className="bg-accent text-white rounded-xl px-6 py-2.5 text-sm font-semibold cursor-pointer disabled:opacity-50">{saving ? '保存中…' : '保存交易'}</button><button type="button" onClick={onCancel} className="border border-border rounded-xl px-5 py-2.5 text-sm cursor-pointer">取消</button></div>
+    </form>
   )
 }

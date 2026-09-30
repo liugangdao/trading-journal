@@ -41,6 +41,28 @@ export const api = {
   updateTrade: (id, data) => request(`/trades/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteTrade: (id) => request(`/trades/${id}`, { method: 'DELETE' }),
 
+  // 轻量交易手记
+  getJournal: (month) => request(`/journal?month=${encodeURIComponent(month)}`),
+  createJournal: (data) => request('/journal', { method: 'POST', body: JSON.stringify(data) }),
+  updateJournal: (id, data) => request(`/journal/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteJournal: (id) => request(`/journal/${id}`, { method: 'DELETE' }),
+  getJournalImages: (id) => request(`/journal/${id}/images`),
+  deleteJournalImage: (id, imageId) => request(`/journal/${id}/images/${imageId}`, { method: 'DELETE' }),
+  uploadJournalImage: async (id, file) => {
+    const res = await fetch(`${BASE}/journal/${id}/images`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type }, body: file,
+    })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: '图片上传失败' }))
+      throw new Error(error.error || '图片上传失败')
+    }
+    return res.json()
+  },
+  getWeeklyGoal: (week) => request(`/journal/goals/${encodeURIComponent(week)}`),
+  saveWeeklyGoal: (week, content) => request(`/journal/goals/${encodeURIComponent(week)}`, {
+    method: 'PUT', body: JSON.stringify({ content }),
+  }),
+
   // Notes
   getNotes: () => request('/notes'),
   createNote: (data) => request('/notes', { method: 'POST', body: JSON.stringify(data) }),
