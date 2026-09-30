@@ -62,7 +62,7 @@ Trades have `status`: `open` or `closed`. Closed trades require `exit_price` and
 - **API client**: `client/src/hooks/useApi.js` — fetch wrapper with `credentials: 'include'` for session cookies, global 401 interception
 - **Calculations**: `client/src/lib/calc.js` 保留旧交易的 R、美元盈亏和按日累计美元曲线；`client/src/lib/rStats.js` 汇总全部有效 R 记录，计算胜率、平均盈利/亏损 R、期望值、违规率与期望日曲线。
 - **Constants**: `client/src/lib/constants.js` — strategies, emotions, scores, timeframes (pairs now come from DB per-user)
-- **Tabs**: record、history、calendar、stats、settings。旧交易记录与美元统计保留，history 提供图片在上、说明在下的逐笔复盘及页内编辑；统计移除连胜、策略分析和周期分析。旧复盘、政策和 TradingView 入口已移除，旧表与接口仍保留。
+- **Tabs**: record、history、calendar、stats、settings。history 仅按日期分页读取轻量及 Hyperliquid 交易，每页 20 笔，逐笔复盘可跨页切换；旧交易数据仍保留但不在记录列表显示。美元统计保留，统计移除连胜、策略分析和周期分析。旧复盘、政策和 TradingView 入口已移除，旧表与接口仍保留。
 - **Trade form**: 时间/品种、方向、市场环境、Setup、入场理由、失效条件、退出原因、最终 R 和/或美元盈亏、可多选执行标签；提前或手动平仓需写原因，结束后另答遮住盈亏是否为好交易。旧 `risk_plan` 和 `score` 保留兼容历史记录；图片通过独立登录接口读取。
 - **Hyperliquid form**: 自动记录锁定时间、品种、方向和美元盈亏；同一表单只保存手工复盘字段。`JournalCard` 和 `ReviewOverlay` 显示来源、持仓数量与已观察手续费。
 - **Theme**: Dark by default with light mode toggle (`client/src/hooks/useTheme.js`)

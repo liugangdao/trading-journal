@@ -7,7 +7,12 @@ const router = Router()
 router.get('/', (req, res) => {
   try {
     const userId = req.session.userId
-    const { date_from, date_to, pair, direction, sort, order, limit, offset } = req.query
+    const { date_from, date_to, pair, direction, sort, order, limit, offset, journal_only } = req.query
+    if (journal_only === '1' && ((date_from && !/^\d{4}-\d{2}-\d{2}$/.test(date_from)) ||
+        (date_to && !/^\d{4}-\d{2}-\d{2}$/.test(date_to)) ||
+        (date_from && date_to && date_from > date_to))) {
+      return res.status(400).json({ error: '日期筛选格式不正确' })
+    }
 
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC'
     const allowed = ['id', 'open_time', 'pair', 'gross_pnl', 'created_at']
@@ -15,6 +20,9 @@ router.get('/', (req, res) => {
 
     const conditions = ['user_id = ?']
     const params = [userId]
+    if (journal_only === '1') {
+      conditions.push("(source = 'hyperliquid' OR (entry_reason IS NOT NULL AND TRIM(entry_reason) <> ''))")
+    }
 
     if (date_from) {
       conditions.push('open_time >= ?')
@@ -37,8 +45,8 @@ router.get('/', (req, res) => {
     const total = db.prepare(`SELECT COUNT(*) as total FROM trades WHERE ${where}`).get(...params).total
 
     let sql = `SELECT * FROM trades WHERE ${where} ORDER BY ${sortCol} ${sortOrder}, id ${sortOrder}`
-    const parsedLimit = parseInt(limit)
-    const parsedOffset = parseInt(offset) || 0
+    const parsedLimit = journal_only === '1' ? Math.min(20, Math.max(1, parseInt(limit) || 20)) : parseInt(limit)
+    const parsedOffset = Math.max(0, parseInt(offset) || 0)
 
     let trades
     if (parsedLimit > 0) {
