@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../hooks/useApi'
+import { GlassButton } from './ui/Glass'
 
 export default function Settings({ pairs, onPairsChange }) {
   const [name, setName] = useState('')
@@ -46,7 +47,7 @@ export default function Settings({ pairs, onPairsChange }) {
       {error && <p className="text-red text-sm" role="alert">{error}</p>}
       <div className="flex gap-2">
         <input value={name} onChange={event => setName(event.target.value)} onKeyDown={event => event.key === 'Enter' && handleAdd()} placeholder="新增品种，如 XAUUSD" aria-label="新增品种名称" className="min-w-0 flex-1 bg-input text-text border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-accent" />
-        <button type="button" onClick={handleAdd} className="bg-accent text-white rounded-lg px-4 py-2 text-sm cursor-pointer">添加</button>
+        <GlassButton variant="primary" onClick={handleAdd}>添加</GlassButton>
       </div>
       <div className="divide-y divide-border border border-border rounded-xl overflow-hidden">
         {pairs.map(pair => <div key={pair.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">

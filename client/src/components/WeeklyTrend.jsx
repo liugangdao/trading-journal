@@ -1,4 +1,5 @@
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { GlassSurface } from './ui/Glass'
 
 const THEME = {
   light: { border: '#e2e8f0', muted: '#94a3b8', green: '#16a34a', red: '#dc2626', accent: '#3b82f6', card: '#ffffff' },
@@ -14,7 +15,7 @@ export default function WeeklyTrend({ weeklyTrend, theme = 'dark' }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="bg-card border border-border rounded-xl p-3 sm:p-5 shadow-sm">
+      <GlassSurface className="p-4 sm:p-6">
         <h4 className="text-sm font-bold mb-3">周胜率趋势</h4>
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={weeklyTrend}>
@@ -25,8 +26,8 @@ export default function WeeklyTrend({ weeklyTrend, theme = 'dark' }) {
             <Line type="monotone" dataKey="winRate" stroke={C.accent} strokeWidth={2.5} dot={{ r: 3, fill: C.accent }} />
           </LineChart>
         </ResponsiveContainer>
-      </div>
-      <div className="bg-card border border-border rounded-xl p-3 sm:p-5 shadow-sm">
+      </GlassSurface>
+      <GlassSurface className="p-4 sm:p-6">
         <h4 className="text-sm font-bold mb-3">周净盈亏趋势</h4>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={weeklyTrend}>
@@ -39,7 +40,7 @@ export default function WeeklyTrend({ weeklyTrend, theme = 'dark' }) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </GlassSurface>
     </div>
   )
 }

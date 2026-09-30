@@ -1,3 +1,5 @@
+import { GlassButton } from './Glass'
+
 export default function Pagination({ total, limit, offset, onChange }) {
   if (!limit || total <= limit) {
     return total > 0 ? <div className="mt-4 text-xs text-muted">共 {total} 条记录</div> : null
@@ -27,36 +29,34 @@ export default function Pagination({ total, limit, offset, onChange }) {
     <div className="flex items-center justify-between mt-4 text-sm text-muted">
       <span className="text-xs">共 {total} 笔交易</span>
       <div className="flex items-center gap-1">
-        <button
+        <GlassButton
           onClick={() => goTo(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-2 py-1 rounded text-xs cursor-pointer hover:text-text transition-colors
-            disabled:opacity-30 disabled:cursor-not-allowed"
-        >‹</button>
+          aria-label="上一页"
+          className="journal-icon-button"
+        >‹</GlassButton>
         <div className="hidden sm:flex items-center gap-1">
           {pages.map((p, i) =>
             p === '...' ? (
               <span key={`e${i}`} className="px-1 text-xs">...</span>
             ) : (
-              <button
+              <GlassButton
                 key={p}
                 onClick={() => goTo(p)}
-                className={`w-7 h-7 rounded text-xs cursor-pointer transition-all duration-200
-                  ${p === currentPage
-                    ? 'bg-accent text-white font-bold'
-                    : 'hover:text-text hover:bg-hover'
-                  }`}
-              >{p}</button>
+                aria-current={p === currentPage ? 'page' : undefined}
+                variant={p === currentPage ? 'primary' : 'ghost'}
+                className="journal-icon-button"
+              >{p}</GlassButton>
             )
           )}
         </div>
         <span className="sm:hidden text-xs">{currentPage}/{totalPages}</span>
-        <button
+        <GlassButton
           onClick={() => goTo(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-2 py-1 rounded text-xs cursor-pointer hover:text-text transition-colors
-            disabled:opacity-30 disabled:cursor-not-allowed"
-        >›</button>
+          aria-label="下一页"
+          className="journal-icon-button"
+        >›</GlassButton>
       </div>
       <span className="text-xs hidden sm:inline">每页 {limit} 笔</span>
     </div>

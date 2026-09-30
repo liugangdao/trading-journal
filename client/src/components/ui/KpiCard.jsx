@@ -1,4 +1,5 @@
 import { useCountUp } from '../../hooks/useCountUp'
+import { GlassSurface } from './Glass'
 
 export default function KpiCard({ label, value, color, sub, comparison }) {
   const numericValue = parseFloat(String(value).replace(/[^0-9.\-]/g, ''))
@@ -16,10 +17,9 @@ export default function KpiCard({ label, value, color, sub, comparison }) {
     : value
 
   return (
-    <div className="bg-card border border-border rounded-xl px-5 py-4 flex-1 min-w-[140px] shadow-sm
-      hover:border-accent/30 transition-all duration-300 card-hover">
+    <GlassSurface className="journal-kpi px-4 py-4 flex-1">
       <div className="text-[11px] text-muted tracking-wide uppercase mb-1">{label}</div>
-      <div className="text-2xl font-bold font-mono" style={{ color: color || undefined }}>
+      <div className="journal-kpi-value text-2xl font-semibold" style={{ color: color || undefined }}>
         {displayValue}
       </div>
       {comparison && (
@@ -31,6 +31,6 @@ export default function KpiCard({ label, value, color, sub, comparison }) {
         </div>
       )}
       {!comparison && sub && <div className="text-[10px] text-muted mt-1">{sub}</div>}
-    </div>
+    </GlassSurface>
   )
 }

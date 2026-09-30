@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import KpiCard from './ui/KpiCard'
+import { GlassSurface } from './ui/Glass'
 import Disclosure from './ui/Disclosure'
 import EmptyState from './EmptyState'
 import WeeklyTrend from './WeeklyTrend'
@@ -68,19 +69,19 @@ export default function Dashboard({ trades, spreadCostMap, theme = 'dark' }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '0ms' }}>
+        <div className="flex-1 min-w-0 animate-fade-in-up" style={{ animationDelay: '0ms' }}>
           <KpiCard label="总交易数" value={stats.total}
             comparison={showComparison ? getComparison(thisWeekStats.total, lastWeekStats.total) : null} />
         </div>
-        <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+        <div className="flex-1 min-w-0 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
           <KpiCard label="净盈亏" value={"$" + stats.totalNet.toFixed(0)} color={stats.totalNet >= 0 ? C.green : C.red}
             comparison={showComparison ? getComparison(thisWeekStats.totalNet, lastWeekStats.totalNet) : null} />
         </div>
-        <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+        <div className="flex-1 min-w-0 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
           <KpiCard label="盈亏比" value={stats.profitFactor} color={stats.profitFactor >= 1.5 ? C.green : C.gold}
             comparison={showComparison ? getComparison(thisWeekStats.profitFactor, lastWeekStats.profitFactor) : null} />
         </div>
-        <div className="flex-1 min-w-[140px] animate-fade-in-up" style={{ animationDelay: '250ms' }}>
+        <div className="flex-1 min-w-0 animate-fade-in-up" style={{ animationDelay: '250ms' }}>
           <KpiCard label="最大回撤" value={stats.maxDrawdown < 0 ? `$${stats.maxDrawdown}` : '$0'} color={stats.maxDrawdown < 0 ? C.red : undefined} />
         </div>
       </div>
@@ -153,10 +154,10 @@ function AnalysisTable({ data }) {
 
 function Card({ title, children }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-3 sm:p-5 shadow-sm">
+    <GlassSurface className="p-4 sm:p-6">
       <h4 className="text-sm font-bold mb-3">{title}</h4>
       {children}
-    </div>
+    </GlassSurface>
   )
 }
 

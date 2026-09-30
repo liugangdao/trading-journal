@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { GlassSurface } from './Glass'
 
 export default function Disclosure({ title, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+    <GlassSurface className="overflow-hidden">
       <button
         onClick={() => setOpen(v => !v)}
         className="w-full flex items-center justify-between px-3 sm:px-5 py-3 cursor-pointer hover:bg-hover transition-colors"
@@ -18,6 +19,6 @@ export default function Disclosure({ title, defaultOpen = false, children }) {
           {children}
         </div>
       )}
-    </div>
+    </GlassSurface>
   )
 }

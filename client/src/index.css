@@ -1,35 +1,119 @@
 @import "tailwindcss";
 
 :root {
-  --c-bg: #f5f6fa;
-  --c-card: #ffffff;
-  --c-border: #d1d9e6;
-  --c-accent: #3b82f6;
+  color-scheme: light;
+  --c-bg: #f2f4f9;
+  --c-card: #fcfdff;
+  --c-border: #d9dfea;
+  --c-accent: #2563eb;
   --c-green: #16a34a;
   --c-red: #dc2626;
   --c-gold: #d97706;
   --c-purple: #7c3aed;
-  --c-text: #1a2332;
-  --c-muted: #64748b;
-  --c-input: #edf0f7;
+  --c-text: #202a3c;
+  --c-muted: #59677c;
+  --c-input: #f0f3f9;
   --c-hover: rgba(0,0,0,0.05);
   --c-header-bg: rgba(245,246,250,0.9);
+  --glass-surface: linear-gradient(145deg, rgba(255,255,255,.96), rgba(249,251,255,.92));
+  --glass-chrome: rgba(255,255,255,.66);
+  --glass-edge: rgba(255,255,255,.95);
+  --glass-shadow: 0 8px 32px rgba(46,66,106,.06), inset 0 1px 0 var(--glass-edge);
+  --glass-control: linear-gradient(150deg, rgba(255,255,255,.93), rgba(237,243,252,.8));
+  --glass-selected: rgba(255,255,255,.98);
+  --journal-halo-blue: rgba(115,168,255,.19);
+  --journal-halo-purple: rgba(184,162,243,.15);
 }
 .dark {
-  --c-bg: #0a0e17;
-  --c-card: #111827;
-  --c-border: #1e293b;
-  --c-accent: #3b82f6;
+  --c-bg: #111722;
+  --c-card: #1d2533;
+  --c-border: #354154;
+  --c-accent: #8ab4ff;
   --c-green: #10b981;
   --c-red: #ef4444;
   --c-gold: #f59e0b;
   --c-purple: #8b5cf6;
-  --c-text: #e2e8f0;
-  --c-muted: #64748b;
-  --c-input: #1e293b;
+  --c-text: #eef2f9;
+  --c-muted: #a4b0c3;
+  --c-input: #182131;
   --c-hover: rgba(255,255,255,0.02);
   --c-header-bg: rgba(15,23,42,0.9);
+  --glass-surface: linear-gradient(145deg, rgba(36,46,63,.97), rgba(26,34,48,.94));
+  --glass-chrome: rgba(31,41,58,.76);
+  --glass-edge: rgba(255,255,255,.12);
+  --glass-shadow: 0 10px 32px rgba(0,0,0,.16), inset 0 1px 0 var(--glass-edge);
+  --glass-control: linear-gradient(150deg, rgba(61,75,97,.82), rgba(32,43,61,.9));
+  --glass-selected: rgba(72,90,116,.85);
+  --journal-halo-blue: rgba(50,104,185,.18);
+  --journal-halo-purple: rgba(112,79,171,.15);
+  color-scheme: dark;
 }
+
+/* 内容材质保持高不透明度，模糊只用于独立导航层。 */
+.journal-app, .journal-review {
+  background: radial-gradient(ellipse at 5% 0%, var(--journal-halo-blue), transparent 48%),
+    radial-gradient(ellipse at 95% 30%, var(--journal-halo-purple), transparent 50%), var(--c-bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.journal-app { min-height: 100dvh; padding-bottom: 36px; }
+.journal-main { max-width: 1280px; margin: auto; padding: 32px 24px; }
+.glass-surface { border: 1px solid var(--c-border); border-radius: 24px; background: var(--glass-surface); box-shadow: var(--glass-shadow); }
+.glass-chrome { border: 1px solid var(--glass-edge); background: var(--glass-chrome); box-shadow: var(--glass-shadow); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); }
+.glass-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 9px 18px; border: 1px solid var(--c-border); border-radius: 999px; background: var(--glass-control); color: var(--c-text); font-size: 13px; font-weight: 600; box-shadow: 0 2px 6px rgba(24,43,73,.04), inset 0 1px 0 var(--glass-edge); cursor: pointer; transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+.glass-button--primary { background: linear-gradient(145deg, #438cf5, #2563eb); color: white; border-color: rgba(41,99,226,.55); box-shadow: 0 4px 14px rgba(37,99,235,.17), inset 0 1px 0 rgba(255,255,255,.32); }
+.glass-button--ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--c-muted); }
+.glass-button:disabled, .glass-segment:disabled { opacity: .45; cursor: default; }
+.glass-button:active:not(:disabled) { transform: scale(.98); }
+.glass-segmented { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--c-border); border-radius: 18px; background: var(--c-input); }
+.glass-segment { min-height: 38px; padding: 8px 24px; border: 1px solid transparent; border-radius: 14px; color: var(--c-muted); cursor: pointer; font-size: 13px; font-weight: 600; transition: background 160ms ease, color 160ms ease; }
+.glass-segment.is-selected { background: var(--glass-selected); border-color: var(--glass-edge); color: var(--c-accent); box-shadow: 0 2px 8px rgba(34,57,90,.08); }
+.journal-header { position: sticky; top: 0; z-index: 40; padding: max(16px, env(safe-area-inset-top)) 20px 12px; background: linear-gradient(180deg, var(--c-bg) 25%, color-mix(in srgb, var(--c-bg) 90%, transparent) 75%, transparent); }
+.journal-header-inner { max-width: 1280px; margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.journal-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.journal-brand-mark { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--glass-edge); border-radius: 14px; background: var(--glass-control); box-shadow: var(--glass-shadow); color: var(--c-accent); }
+.journal-brand h1 { font-size: 17px; font-weight: 700; letter-spacing: -.04em; }
+.journal-brand p { font-size: 10px; color: var(--c-muted); margin-top: 2px; }
+.journal-desktop-nav { display: flex; padding: 5px; gap: 3px; border-radius: 999px; }
+.journal-nav-item { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 9px 13px; border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--c-muted); cursor: pointer; transition: background 160ms ease, color 160ms ease; }
+.journal-nav-item.is-selected { background: var(--glass-selected); box-shadow: 0 2px 8px rgba(24,46,82,.08), inset 0 1px 0 var(--glass-edge); color: var(--c-accent); font-weight: 650; }
+.journal-icon-button { width: 40px; height: 40px; padding: 0; flex-shrink: 0; }
+.journal-mobile-nav { display: none; }
+.journal-app :where(input:not([type='file']):not([type='checkbox']):not([type='radio']), select, textarea), .journal-review :where(input:not([type='file']):not([type='checkbox']):not([type='radio']), select, textarea) { border-radius: 14px; border-color: var(--c-border); background-color: var(--c-input); line-height: 1.5; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.journal-app :where(button, input, textarea, select, summary, [tabindex]):focus-visible, .journal-review :where(button, input, textarea, select, summary, [tabindex]):focus-visible { outline: 3px solid var(--c-accent); outline-offset: 3px; }
+.journal-app :where(input, textarea, select):disabled { opacity: .6; }
+.journal-app :where(select) option, .journal-review :where(select) option { background: var(--c-card); color: var(--c-text); }
+.journal-app h2, .journal-review h2 { letter-spacing: -.025em; }
+.journal-app .glass-surface p, .journal-review .glass-surface p { overflow-wrap: anywhere; }
+.journal-kpi { min-width: 0; border-radius: 18px; box-shadow: inset 0 1px 0 var(--glass-edge); }
+.journal-kpi-value { font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.journal-trade-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.journal-trade-heading > span { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.journal-tag { border-radius: 999px; min-height: 38px; transition: background 160ms ease, border-color 160ms ease; }
+.journal-review-header { background: var(--glass-chrome); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); }
+.journal-review-content { width: 100%; max-width: 1600px; margin: auto; padding: 24px; }
+.journal-review-image { width: 100%; height: auto; object-fit: contain; }
+.journal-review-switcher { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.journal-update-prompt { bottom: calc(104px + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) { .journal-update-prompt { bottom: 16px; } }
+@media (hover: hover) { .glass-button:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(32,55,94,.1), inset 0 1px 0 var(--glass-edge); } .journal-nav-item:hover:not(.is-selected) { background: var(--c-hover); color: var(--c-text); } }
+@media (max-width: 767px) {
+  .journal-app { padding-bottom: calc(108px + env(safe-area-inset-bottom)); }
+  .journal-header { padding: max(12px, env(safe-area-inset-top)) 16px 8px; }
+  .journal-main { padding: 20px 16px; }
+  .journal-review-content { padding: 16px; }
+  .journal-review-image { max-height: 65vh; }
+  .journal-desktop-nav { display: none; }
+  .journal-mobile-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; z-index: 40; bottom: calc(14px + env(safe-area-inset-bottom)); left: max(16px, env(safe-area-inset-left)); right: max(16px, env(safe-area-inset-right)); max-width: 480px; margin: auto; padding: 6px; border-radius: 28px; }
+  .journal-mobile-nav .journal-nav-item { flex-direction: column; gap: 4px; min-height: 56px; padding: 7px 2px; border-radius: 22px; font-size: 10px; }
+  .glass-surface { border-radius: 20px; }
+  .journal-trade-heading { align-items: flex-start; }
+}
+@media (max-width: 479px) { .journal-review-switcher { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .journal-review-identity { grid-column: 1 / -1; order: -1; } }
+@media (max-width: 380px) { .journal-trade-heading { flex-wrap: wrap; gap: 8px; } .journal-brand p { font-size: 9px; } }
+@supports not (backdrop-filter: blur(1px)) { .glass-chrome, .journal-review-header { background: var(--c-card); } }
+@media (prefers-reduced-transparency: reduce) { .glass-chrome, .journal-review-header { background: var(--c-card); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+@media (prefers-reduced-motion: reduce) { .journal-app *, .journal-review * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 
 /* Landing page animations */
 @keyframes fade-up {

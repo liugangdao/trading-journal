@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import KpiCard from './ui/KpiCard'
+import { GlassSurface } from './ui/Glass'
 import { calcRStats } from '../lib/rStats'
 
 const colors = {
@@ -15,7 +16,7 @@ export default function RStatsPanel({ trades, theme = 'dark' }) {
   const signedR = value => `${value > 0 ? '+' : ''}${value.toFixed(2)}R`
 
   return <section className="space-y-4">
-    <div className="bg-card border border-border rounded-xl p-4 sm:p-5">
+    <GlassSurface className="p-5 sm:p-6">
       <h2 className="text-base font-semibold">R 期望</h2>
       <p className="text-xs text-muted mt-1">按已结束且有有效 R 的 {stats.count} 笔交易计算；持平交易计入总笔数。</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
@@ -27,8 +28,8 @@ export default function RStatsPanel({ trades, theme = 'dark' }) {
       </div>
       <p className="text-xs text-muted mt-4">期望值 = 胜率 × 平均盈利 R − 败率 × 平均亏损 R。当前：{stats.winRate}% × {stats.avgWinningR.toFixed(2)}R − {stats.lossRate}% × {stats.avgLosingR.toFixed(2)}R = <strong className="text-text">{signedR(stats.expectancy)}</strong></p>
       <p className="text-xs text-muted mt-1">违规率按有执行评价的 {stats.evaluatedCount} 笔计算，其中 {stats.violations} 笔含违规标签或旧评分 C/D。</p>
-    </div>
-    {stats.dailyExpectancy.length > 0 && <div className="bg-card border border-border rounded-xl p-4 sm:p-5">
+    </GlassSurface>
+    {stats.dailyExpectancy.length > 0 && <GlassSurface className="p-5 sm:p-6">
       <h3 className="text-sm font-semibold mb-1">期望值日曲线</h3>
       <p className="text-xs text-muted mb-4">蓝线为当天每笔平均 R，绿线为截至当天的每笔平均 R；每个交易日只显示一个点。</p>
       <ResponsiveContainer width="100%" height={250}>
@@ -42,6 +43,6 @@ export default function RStatsPanel({ trades, theme = 'dark' }) {
           <Line name="累计期望" type="monotone" dataKey="cumulative" stroke={palette.cumulative} strokeWidth={2.5} dot={{ r: 4 }} />
         </LineChart>
       </ResponsiveContainer>
-    </div>}
+    </GlassSurface>}
   </section>
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../hooks/useApi'
+import { GlassSurface } from './ui/Glass'
 
 export default function TradeImageEditor({ tradeId, onChanged }) {
   const [images, setImages] = useState([])
@@ -29,14 +30,14 @@ export default function TradeImageEditor({ tradeId, onChanged }) {
     try { await api.deleteJournalImage(tradeId, imageId); setImages(current => current.filter(image => image.id !== imageId)); onChanged?.() }
     catch (cause) { setError(cause.message) }
   }
-  return <div onPaste={event => {
+  return <GlassSurface onPaste={event => {
     const files = [...event.clipboardData.items].filter(item => item.kind === 'file').map(item => item.getAsFile()).filter(Boolean)
     if (files.length) { event.preventDefault(); addFiles(files) }
-  }} className="bg-card border border-border rounded-xl p-4 mb-5" tabIndex={0}>
+  }} className="p-5 mb-5" tabIndex={0}>
     <h3 className="text-sm font-semibold">交易截图</h3>
     <p className="text-xs text-muted mt-1 mb-3">点击此处按 Ctrl+V 粘贴，或选择图片。保存后可在逐笔复盘中查看。</p>
-    <label className="inline-block border border-border rounded-lg px-3 py-2 text-xs cursor-pointer">{busy ? '上传中…' : '选择图片'}<input disabled={busy} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={event => { addFiles(event.target.files || []); event.target.value = '' }} /></label>
+    <label className="glass-button">{busy ? '上传中…' : '选择图片'}<input disabled={busy} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={event => { addFiles(event.target.files || []); event.target.value = '' }} /></label>
     {error && <p className="text-red text-xs mt-2" role="alert">{error}</p>}
     {images.length > 0 && <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">{images.map(image => <div key={image.id} className="relative"><img src={`/api/journal/${tradeId}/images/${image.id}`} alt="交易截图" className="w-full h-28 object-cover rounded-lg" /><button onClick={() => remove(image.id)} className="absolute top-1 right-1 bg-black/70 text-white rounded px-1.5 text-xs cursor-pointer">删除</button></div>)}</div>}
-  </div>
+  </GlassSurface>
 }

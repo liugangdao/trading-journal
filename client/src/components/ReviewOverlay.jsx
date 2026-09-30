@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../hooks/useApi'
 import { getExecutionTags } from '../lib/journal'
 import TradeForm from './TradeForm'
+import { GlassButton, GlassSurface } from './ui/Glass'
 
 export default function ReviewOverlay({ trade, position, total, pairs, weekGoal, onClose, onNavigate, onSave }) {
   const [images, setImages] = useState([])
@@ -49,27 +50,27 @@ export default function ReviewOverlay({ trade, position, total, pairs, weekGoal,
   const hasR = trade.result_r != null
   const hasDollars = trade.gross_pnl != null
   const tags = getExecutionTags(trade)
-  return <div role="dialog" aria-modal="true" aria-label="逐笔复盘" className="fixed inset-0 z-[70] bg-bg text-text overflow-y-auto">
-    <div className="sticky top-0 z-10 bg-header-bg border-b border-border px-4 py-3 flex items-center justify-between gap-3">
+  return <div role="dialog" aria-modal="true" aria-label="逐笔复盘" className="journal-review fixed inset-0 z-[70] text-text overflow-y-auto">
+    <div className="journal-review-header sticky top-0 z-10 border-b border-border px-4 py-3 flex items-center justify-between gap-3">
       <div><h2 className="font-bold">逐笔复盘</h2><p className="text-xs text-muted">第 {position + 1} / {total} 笔 · 按左右方向键切换</p></div>
-      <button onClick={onClose} className="text-sm border border-border rounded-lg px-3 py-2 cursor-pointer">关闭 ×</button>
+      <GlassButton onClick={onClose}>关闭 ×</GlassButton>
     </div>
-    <div className="max-w-4xl mx-auto p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <button disabled={isEditing || isNavigating || position === 0} onClick={() => navigate(position - 1)} className="border border-border rounded-lg px-3 py-2 text-sm cursor-pointer disabled:opacity-40">← 上一笔</button>
-        <div className="text-center"><div className="font-semibold">{trade.pair} · {trade.direction?.startsWith('多') ? 'Long' : 'Short'}</div><div className="text-xs text-muted">{trade.open_time?.replace('T', ' ')}</div></div>
-        <button disabled={isEditing || isNavigating || position === total - 1} onClick={() => navigate(position + 1)} className="border border-border rounded-lg px-3 py-2 text-sm cursor-pointer disabled:opacity-40">下一笔 →</button>
+    <div className="journal-review-content">
+      <div className="journal-review-switcher mb-4">
+        <GlassButton disabled={isEditing || isNavigating || position === 0} onClick={() => navigate(position - 1)}>← 上一笔</GlassButton>
+        <div className="journal-review-identity text-center"><div className="font-semibold">{trade.pair} · {trade.direction?.startsWith('多') ? 'Long' : 'Short'}</div><div className="text-xs text-muted">{trade.open_time?.replace('T', ' ')}</div></div>
+        <GlassButton disabled={isEditing || isNavigating || position === total - 1} onClick={() => navigate(position + 1)}>下一笔 →</GlassButton>
       </div>
       <div className="space-y-4">
-        <section className="bg-card border border-border rounded-xl p-3">
+        <GlassSurface as="section" className="p-3">
           {images.length ? <>
-            <div className="min-h-64 sm:min-h-[420px] flex items-center justify-center bg-black/20 rounded-lg"><img src={`/api/journal/${trade.id}/images/${images[imageIndex].id}`} alt={`第 ${imageIndex + 1} 张交易截图`} className="max-w-full max-h-[65vh] object-contain" /></div>
+            <div className="min-h-64 sm:min-h-[420px] flex items-center justify-center bg-black/20 rounded-lg"><img src={`/api/journal/${trade.id}/images/${images[imageIndex].id}`} alt={`第 ${imageIndex + 1} 张交易截图`} className="journal-review-image" /></div>
             <div className="flex items-center justify-between mt-3 text-sm"><button disabled={imageIndex === 0} onClick={() => setImageIndex(value => value - 1)} className="cursor-pointer disabled:opacity-40">‹ 上一张</button><span>{imageIndex + 1} / {images.length}</span><button disabled={imageIndex === images.length - 1} onClick={() => setImageIndex(value => value + 1)} className="cursor-pointer disabled:opacity-40">下一张 ›</button></div>
           </> : <div className="min-h-64 sm:min-h-[420px] flex items-center justify-center text-sm text-muted">这笔交易还没有截图</div>}
-        </section>
+        </GlassSurface>
         {isEditing ? <section className="space-y-3">
           <TradeForm key={trade.id} initial={trade} pairs={pairs} weekGoal={weekGoal} onSave={async (form, pending) => { await onSave(form, pending); setIsEditing(false) }} onCancel={() => setIsEditing(false)} />
-        </section> : <section className="bg-card border border-border rounded-xl p-5 space-y-4 text-sm">
+        </section> : <GlassSurface as="section" className="p-5 sm:p-6 space-y-4 text-sm">
           <div className="flex items-center justify-between gap-2"><strong>{[trade.market_environment, trade.setup].filter(Boolean).join(' · ') || trade.strategy || '交易判断'}</strong><span className="text-right">{hasR && <span className={trade.result_r >= 0 ? 'text-green' : 'text-red'}>{trade.result_r > 0 ? '+' : ''}{trade.result_r}R</span>}{hasR && hasDollars && ' · '}{hasDollars && <span className={trade.gross_pnl >= 0 ? 'text-green' : 'text-red'}>{trade.gross_pnl > 0 ? '+' : ''}${Number(trade.gross_pnl).toFixed(2)}</span>}{!hasR && !hasDollars && <span className="text-muted">进行中</span>}</span></div>
           <div><div className="text-xs text-muted mb-1">入场理由</div><p className="whitespace-pre-wrap">{trade.entry_reason || trade.notes || '—'}</p></div>
           <div><div className="text-xs text-muted mb-1">失效条件</div><p className="whitespace-pre-wrap">{trade.invalidation || '—'}</p></div>
@@ -78,8 +79,8 @@ export default function ReviewOverlay({ trade, position, total, pairs, weekGoal,
           {trade.risk_plan && <div><div className="text-xs text-muted mb-1">旧版风控记录</div><p className="whitespace-pre-wrap">{trade.risk_plan}</p></div>}
           {trade.source === 'hyperliquid' && <div><div className="text-xs text-muted mb-1">Hyperliquid 同步数据</div><p>{trade.status === 'open' ? `进行中 · 持仓 ${Math.abs(Number(trade.source_position_size || 0))}` : '已平仓'} · 入场 {trade.entry ?? '—'} · 出场 {trade.exit_price ?? '—'} · 已实现 {Number(trade.source_realized_pnl || 0).toFixed(2)} USDC · 已观察手续费 {Number(trade.source_fee_usd || 0).toFixed(2)} USDC</p>{trade.source_sync_note && <p className="text-muted mt-1">{trade.source_sync_note}</p>}</div>}
           <div><div className="text-xs text-muted mb-1">执行评价</div><p>{tags.length ? tags.join(' / ') : trade.score ? `旧评分 ${trade.score}` : '尚未评价'}{trade.good_trade != null && ` · 遮住盈亏仍是好交易：${trade.good_trade ? '是' : '否'}`}</p></div>
-          <button onClick={() => setIsEditing(true)} className="text-accent text-sm cursor-pointer">编辑这笔交易</button>
-        </section>}
+          <GlassButton onClick={() => setIsEditing(true)}>编辑这笔交易</GlassButton>
+        </GlassSurface>}
       </div>
     </div>
   </div>

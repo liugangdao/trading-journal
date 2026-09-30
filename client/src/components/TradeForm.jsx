@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../hooks/useApi'
 import { EXIT_REASONS, EXECUTION_TAGS, getExecutionTags } from '../lib/journal'
+import { GlassButton, GlassSegmentedControl, GlassSurface } from './ui/Glass'
 
 const environments = ['趋势', '区间', '突破', '趋势末端']
 const setups = ['突破', '突破回踩', 'Vegas回调', 'H2/L2', '其他']
@@ -111,9 +112,9 @@ export default function TradeForm({ initial, pairs = [], weekGoal, onSave, onCan
   }
 
   return (
-    <form onSubmit={submit} onPaste={onPaste} className="bg-card border border-border rounded-2xl p-4 sm:p-6 space-y-5">
+    <GlassSurface as="form" onSubmit={submit} onPaste={onPaste} className="p-5 sm:p-8 space-y-5">
       <div>
-        <h2 className="text-lg font-bold">{initial?.id ? '编辑交易' : '记一笔交易'}</h2>
+        <h2 className="text-xl font-bold">{initial?.id ? '编辑交易' : '记一笔交易'}</h2>
         <p className="text-xs text-muted mt-1">先写判断，结束后再补结果。核心是入场理由、失效条件和执行评价。</p>
         {auto && <p className="text-xs text-accent mt-2">Hyperliquid 自动同步 · 时间、品种、方向和美元盈亏由成交记录更新</p>}
       </div>
@@ -124,7 +125,7 @@ export default function TradeForm({ initial, pairs = [], weekGoal, onSave, onCan
       </div>
       <div>
         <div className="text-xs text-muted mb-2">② 方向</div>
-        <div className="flex gap-2">{[['多(Buy)', 'Long'], ['空(Sell)', 'Short']].map(([value, label]) => <button key={value} type="button" disabled={auto} onClick={() => change('direction', value)} className={`rounded-xl px-5 py-2 text-sm border cursor-pointer disabled:cursor-default ${form.direction === value ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{label}</button>)}</div>
+        <GlassSegmentedControl label="交易方向" value={form.direction} disabled={auto} onChange={value => change('direction', value)} options={[{ value: '多(Buy)', label: 'Long' }, { value: '空(Sell)', label: 'Short' }]} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="text-xs text-muted">③ 市场环境<select className={`${inputClass} mt-1`} value={form.market_environment} onChange={event => change('market_environment', event.target.value)}><option value="">请选择</option>{environments.map(value => <option key={value}>{value}</option>)}</select></label>
@@ -137,22 +138,22 @@ export default function TradeForm({ initial, pairs = [], weekGoal, onSave, onCan
         {(form.exit_reason === '手动平仓' || form.execution_tags.includes('提前平仓')) && <label className="block text-xs text-muted mt-3">为什么提前或手动平仓？<textarea className={`${inputClass} mt-1 min-h-16 resize-y`} value={form.execution_note} onChange={event => change('execution_note', event.target.value)} placeholder="当时看到了什么、为什么没有继续按原计划持有？" maxLength={2000} /></label>}
       </div>
       <div><div className="text-xs text-muted font-semibold mb-2">⑧ 最终结果（结束后填写）</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><label className="text-xs text-muted">R<input className={`${inputClass} mt-1`} type="number" step="any" value={form.result_r} onChange={event => change('result_r', event.target.value)} placeholder="+2.3" /></label><label className="text-xs text-muted">美元盈亏{auto && ' · 自动'}<input className={`${inputClass} mt-1`} type="number" step="any" value={form.gross_pnl} onChange={event => change('gross_pnl', event.target.value)} disabled={auto} placeholder={auto && initial.status === 'open' ? '平仓后自动显示' : '+235'} /></label></div></div>
-      <div><div className="text-xs text-muted font-semibold mb-2">⑨ 执行评价（可多选）</div><div className="flex flex-wrap gap-2">{EXECUTION_TAGS.map(tag => <button key={tag} type="button" aria-pressed={form.execution_tags.includes(tag)} onClick={() => toggleTag(tag)} className={`rounded-lg border px-3 py-2 text-sm cursor-pointer ${form.execution_tags.includes(tag) ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{tag}</button>)}</div></div>
+      <div><div className="text-xs text-muted font-semibold mb-2">⑨ 执行评价（可多选）</div><div className="flex flex-wrap gap-2">{EXECUTION_TAGS.map(tag => <button key={tag} type="button" aria-pressed={form.execution_tags.includes(tag)} onClick={() => toggleTag(tag)} className={`journal-tag border px-3 py-2 text-sm cursor-pointer ${form.execution_tags.includes(tag) ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{tag}</button>)}</div></div>
       {(auto ? initial.status === 'closed' : form.result_r !== '' || form.gross_pnl !== '') && <div className="rounded-xl border border-border p-4">
         <div className="text-sm font-medium mb-3">如果把盈亏结果遮住，这仍是一笔好交易吗？</div>
-        <div className="flex gap-2">{[[true, '是'], [false, '否']].map(([value, label]) => <button type="button" key={label} onClick={() => change('good_trade', value)} className={`px-5 py-2 rounded-lg border text-sm cursor-pointer ${form.good_trade === value ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{label}</button>)}</div>
+        <GlassSegmentedControl label="遮住盈亏仍是好交易" value={form.good_trade} onChange={value => change('good_trade', value)} options={[{ value: true, label: '是' }, { value: false, label: '否' }]} />
       </div>}
       <div className="rounded-xl border border-dashed border-border p-4" tabIndex={0}>
         <div className="text-sm font-medium">交易截图</div>
         <p className="text-xs text-muted mt-1 mb-3">在表单中按 Ctrl+V 粘贴截图，或选择图片；每张不超过 5 MB。</p>
-        <label className="inline-block border border-border rounded-lg px-3 py-2 text-xs cursor-pointer">选择图片<input type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={event => { addFiles(event.target.files || []); event.target.value = '' }} /></label>
+        <label className="glass-button">选择图片<input type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={event => { addFiles(event.target.files || []); event.target.value = '' }} /></label>
         {(images.length > 0 || pending.length > 0) && <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
           {images.map(image => <div key={image.id} className="relative"><img className="w-full h-28 object-cover rounded-lg" src={`/api/journal/${initial.id}/images/${image.id}`} alt="交易截图" /><button type="button" onClick={() => removeImage(image.id)} className="absolute top-1 right-1 bg-black/70 text-white text-xs rounded px-1.5 cursor-pointer">删除</button></div>)}
           {pending.map(item => <div key={item.url} className="relative"><img className="w-full h-28 object-cover rounded-lg" src={item.url} alt="待保存截图" /><button type="button" onClick={() => removePending(item)} className="absolute top-1 right-1 bg-black/70 text-white text-xs rounded px-1.5 cursor-pointer">移除</button></div>)}
         </div>}
       </div>
       {error && <p className="text-red text-sm" role="alert">{error}</p>}
-      <div className="flex gap-3"><button disabled={saving} className="bg-accent text-white rounded-xl px-6 py-2.5 text-sm font-semibold cursor-pointer disabled:opacity-50">{saving ? '保存中…' : '保存交易'}</button><button type="button" onClick={onCancel} className="border border-border rounded-xl px-5 py-2.5 text-sm cursor-pointer">取消</button></div>
-    </form>
+      <div className="flex gap-3 pt-1"><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? '保存中…' : '保存交易'}</GlassButton><GlassButton onClick={onCancel}>取消</GlassButton></div>
+    </GlassSurface>
   )
 }

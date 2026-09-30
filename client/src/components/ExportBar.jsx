@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { api } from '../hooks/useApi'
+import { GlassButton } from './ui/Glass'
 
 export default function ExportBar({ onImported }) {
   const [from, setFrom] = useState('')
@@ -66,17 +67,14 @@ export default function ExportBar({ onImported }) {
               focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all duration-200"
           />
         </div>
-        <button
+        <GlassButton
           onClick={handleExport}
           disabled={exporting}
-          className="px-4 py-1.5 rounded-lg text-xs font-medium text-muted border border-border
-            hover:text-text hover:border-accent/50 transition-all duration-200 cursor-pointer"
         >
           {exporting ? '导出中...' : '导出数据'}
-        </button>
+        </GlassButton>
         <label
-          className={`px-4 py-1.5 rounded-lg text-xs font-medium text-muted border border-border
-            hover:text-text hover:border-accent/50 transition-all duration-200 cursor-pointer
+          className={`glass-button
             ${importing ? 'opacity-50 pointer-events-none' : ''}`}
         >
           {importing ? '导入中...' : '导入数据'}
