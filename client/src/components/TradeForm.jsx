@@ -42,6 +42,7 @@ function initialForm(initial, pairs) {
 const inputClass = 'w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm text-text outline-none focus:border-accent'
 
 export default function TradeForm({ initial, pairs = [], weekGoal, onSave, onCancel }) {
+  const auto = initial?.source === 'hyperliquid'
   const [form, setForm] = useState(() => initialForm(initial, pairs))
   const [pending, setPending] = useState([])
   const [images, setImages] = useState([])
@@ -100,8 +101,8 @@ export default function TradeForm({ initial, pairs = [], weekGoal, onSave, onCan
   const submit = async event => {
     event.preventDefault()
     if (!form.entry_reason.trim() || !form.invalidation.trim()) return setError('请填写入场理由和失效条件')
-    const hasResult = form.result_r !== '' || form.gross_pnl !== ''
-    if (hasResult && (!form.exit_reason || !form.execution_tags.length || form.good_trade == null)) return setError('结束交易时请填写退出原因、执行评价，并回答是否为好交易')
+    const hasResult = auto ? initial.status === 'closed' : form.result_r !== '' || form.gross_pnl !== ''
+    if (!auto && hasResult && (!form.exit_reason || !form.execution_tags.length || form.good_trade == null)) return setError('结束交易时请填写退出原因、执行评价，并回答是否为好交易')
     if (hasResult && (form.exit_reason === '手动平仓' || form.execution_tags.includes('提前平仓')) && !form.execution_note.trim()) return setError('请写明提前或手动平仓的原因')
     setSaving(true)
     try { await onSave(form, pending.map(item => item.file)) }
@@ -114,15 +115,16 @@ export default function TradeForm({ initial, pairs = [], weekGoal, onSave, onCan
       <div>
         <h2 className="text-lg font-bold">{initial?.id ? '编辑交易' : '记一笔交易'}</h2>
         <p className="text-xs text-muted mt-1">先写判断，结束后再补结果。核心是入场理由、失效条件和执行评价。</p>
+        {auto && <p className="text-xs text-accent mt-2">Hyperliquid 自动同步 · 时间、品种、方向和美元盈亏由成交记录更新</p>}
       </div>
       {weekGoal && <div className="rounded-xl bg-accent/10 border border-accent/20 px-4 py-3 text-sm"><span className="text-accent font-semibold">本周目标 · </span>{weekGoal}</div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <label className="text-xs text-muted">① 时间<input className={`${inputClass} mt-1`} type="datetime-local" value={form.open_time} onChange={event => change('open_time', event.target.value)} required /></label>
-        <label className="text-xs text-muted">品种<select className={`${inputClass} mt-1`} value={form.pair} onChange={event => change('pair', event.target.value)}>{[...new Set([form.pair, ...pairs])].map(pair => <option key={pair}>{pair}</option>)}</select></label>
+        <label className="text-xs text-muted">① 时间<input className={`${inputClass} mt-1`} type="datetime-local" value={form.open_time} onChange={event => change('open_time', event.target.value)} disabled={auto} required /></label>
+        <label className="text-xs text-muted">品种<select className={`${inputClass} mt-1`} value={form.pair} onChange={event => change('pair', event.target.value)} disabled={auto}>{[...new Set([form.pair, ...pairs])].map(pair => <option key={pair}>{pair}</option>)}</select></label>
       </div>
       <div>
         <div className="text-xs text-muted mb-2">② 方向</div>
-        <div className="flex gap-2">{[['多(Buy)', 'Long'], ['空(Sell)', 'Short']].map(([value, label]) => <button key={value} type="button" onClick={() => change('direction', value)} className={`rounded-xl px-5 py-2 text-sm border cursor-pointer ${form.direction === value ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{label}</button>)}</div>
+        <div className="flex gap-2">{[['多(Buy)', 'Long'], ['空(Sell)', 'Short']].map(([value, label]) => <button key={value} type="button" disabled={auto} onClick={() => change('direction', value)} className={`rounded-xl px-5 py-2 text-sm border cursor-pointer disabled:cursor-default ${form.direction === value ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{label}</button>)}</div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="text-xs text-muted">③ 市场环境<select className={`${inputClass} mt-1`} value={form.market_environment} onChange={event => change('market_environment', event.target.value)}><option value="">请选择</option>{environments.map(value => <option key={value}>{value}</option>)}</select></label>
@@ -134,9 +136,9 @@ export default function TradeForm({ initial, pairs = [], weekGoal, onSave, onCan
         <label className="block text-xs text-muted font-semibold">⑦ 退出原因<select className={`${inputClass} mt-1`} value={form.exit_reason} onChange={event => change('exit_reason', event.target.value)}><option value="">结束后选择</option>{EXIT_REASONS.map(reason => <option key={reason} value={reason}>{reason}</option>)}</select></label>
         {(form.exit_reason === '手动平仓' || form.execution_tags.includes('提前平仓')) && <label className="block text-xs text-muted mt-3">为什么提前或手动平仓？<textarea className={`${inputClass} mt-1 min-h-16 resize-y`} value={form.execution_note} onChange={event => change('execution_note', event.target.value)} placeholder="当时看到了什么、为什么没有继续按原计划持有？" maxLength={2000} /></label>}
       </div>
-      <div><div className="text-xs text-muted font-semibold mb-2">⑧ 最终结果（结束后填写）</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><label className="text-xs text-muted">R<input className={`${inputClass} mt-1`} type="number" step="any" value={form.result_r} onChange={event => change('result_r', event.target.value)} placeholder="+2.3" /></label><label className="text-xs text-muted">美元盈亏<input className={`${inputClass} mt-1`} type="number" step="any" value={form.gross_pnl} onChange={event => change('gross_pnl', event.target.value)} placeholder="+235" /></label></div></div>
+      <div><div className="text-xs text-muted font-semibold mb-2">⑧ 最终结果（结束后填写）</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><label className="text-xs text-muted">R<input className={`${inputClass} mt-1`} type="number" step="any" value={form.result_r} onChange={event => change('result_r', event.target.value)} placeholder="+2.3" /></label><label className="text-xs text-muted">美元盈亏{auto && ' · 自动'}<input className={`${inputClass} mt-1`} type="number" step="any" value={form.gross_pnl} onChange={event => change('gross_pnl', event.target.value)} disabled={auto} placeholder={auto && initial.status === 'open' ? '平仓后自动显示' : '+235'} /></label></div></div>
       <div><div className="text-xs text-muted font-semibold mb-2">⑨ 执行评价（可多选）</div><div className="flex flex-wrap gap-2">{EXECUTION_TAGS.map(tag => <button key={tag} type="button" aria-pressed={form.execution_tags.includes(tag)} onClick={() => toggleTag(tag)} className={`rounded-lg border px-3 py-2 text-sm cursor-pointer ${form.execution_tags.includes(tag) ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{tag}</button>)}</div></div>
-      {(form.result_r !== '' || form.gross_pnl !== '') && <div className="rounded-xl border border-border p-4">
+      {(auto ? initial.status === 'closed' : form.result_r !== '' || form.gross_pnl !== '') && <div className="rounded-xl border border-border p-4">
         <div className="text-sm font-medium mb-3">如果把盈亏结果遮住，这仍是一笔好交易吗？</div>
         <div className="flex gap-2">{[[true, '是'], [false, '否']].map(([value, label]) => <button type="button" key={label} onClick={() => change('good_trade', value)} className={`px-5 py-2 rounded-lg border text-sm cursor-pointer ${form.good_trade === value ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted'}`}>{label}</button>)}</div>
       </div>}

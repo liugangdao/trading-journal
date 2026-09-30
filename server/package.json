@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js"
+    "start": "node launcher.js",
+    "dev": "node launcher.js --watch"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -15,6 +15,7 @@ import pairsRouter from './routes/pairs.js'
 import policiesRouter from './routes/policies.js'
 import violationsRouter from './routes/violations.js'
 import journalRouter from './routes/journal.js'
+import hyperliquidRouter from './routes/hyperliquid.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -47,6 +48,7 @@ app.use('/api/auth', authRouter)
 // Protected API routes
 app.use('/api/trades', requireAuth, tradesRouter)
 app.use('/api/journal', requireAuth, journalRouter)
+app.use('/api/hyperliquid', requireAuth, hyperliquidRouter)
 app.use('/api/notes', requireAuth, notesRouter)
 app.use('/api/monthly-notes', requireAuth, monthlyNotesRouter)
 app.use('/api/pairs', requireAuth, pairsRouter)

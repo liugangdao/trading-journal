@@ -99,6 +99,7 @@ router.put('/:id', (req, res) => {
     const { open_time, close_time, pair, direction, strategy, timeframe, lots, entry, stop, target, exit_price, gross_pnl, swap, score, emotion, notes, status, risk_amount } = req.body
     const existing = db.prepare('SELECT * FROM trades WHERE id = ? AND user_id = ?').get(req.params.id, userId)
     if (!existing) return res.status(404).json({ error: 'Trade not found' })
+    if (existing.source === 'hyperliquid') return res.status(409).json({ error: '同步交易请在复盘表单编辑，自动字段不能手动更改' })
 
     const tradeStatus = status || existing.status
     if ((existing.status === 'missed' && tradeStatus !== 'missed') ||
@@ -135,6 +136,9 @@ router.delete('/:id', (req, res) => {
     const userId = req.session.userId
     const existing = db.prepare('SELECT * FROM trades WHERE id = ? AND user_id = ?').get(req.params.id, userId)
     if (!existing) return res.status(404).json({ error: 'Trade not found' })
+    if (existing.source === 'hyperliquid' && existing.status === 'open' && !existing.source_detached &&
+        db.prepare('SELECT 1 FROM hyperliquid_accounts WHERE user_id = ? AND address = ?')
+          .get(userId, existing.source_account)) return res.status(409).json({ error: '同步中的持仓不能删除，请先解绑账户' })
     db.prepare('DELETE FROM trades WHERE id = ? AND user_id = ?').run(req.params.id, userId)
     res.json({ success: true })
   } catch (err) {

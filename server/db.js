@@ -284,6 +284,16 @@ for (const [name, definition] of Object.entries({
   exit_reason: 'TEXT',
   execution_tags: 'TEXT',
   good_trade: 'INTEGER',
+  source: "TEXT NOT NULL DEFAULT 'manual'",
+  source_account: 'TEXT',
+  source_coin: 'TEXT',
+  source_ref: 'TEXT',
+  source_position_size: 'REAL',
+  source_fee_usd: 'REAL NOT NULL DEFAULT 0',
+  source_realized_pnl: 'REAL NOT NULL DEFAULT 0',
+  source_entry_unknown: 'INTEGER NOT NULL DEFAULT 0',
+  source_sync_note: 'TEXT',
+  source_detached: 'INTEGER NOT NULL DEFAULT 0',
 })) {
   if (!journalColumns.has(name)) db.exec(`ALTER TABLE trades ADD COLUMN ${name} ${definition}`)
 }
@@ -305,6 +315,27 @@ db.exec(`
     PRIMARY KEY (user_id, week_key)
   );
   CREATE INDEX IF NOT EXISTS idx_trades_user_time ON trades(user_id, open_time);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_source_ref ON trades(user_id, source, source_ref)
+    WHERE source_ref IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS idx_trades_hyperliquid_open ON trades(user_id, source_account, source_coin, status)
+    WHERE source = 'hyperliquid';
+  CREATE TABLE IF NOT EXISTS hyperliquid_accounts (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    address TEXT NOT NULL,
+    started_at_ms INTEGER NOT NULL,
+    cursor_ms INTEGER NOT NULL,
+    last_synced_at TEXT,
+    last_error TEXT
+  );
+  CREATE TABLE IF NOT EXISTS hyperliquid_fills (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    address TEXT NOT NULL,
+    tid TEXT NOT NULL,
+    coin TEXT NOT NULL,
+    time_ms INTEGER NOT NULL,
+    trade_id INTEGER REFERENCES trades(id) ON DELETE SET NULL,
+    PRIMARY KEY (user_id, address, tid)
+  );
 `)
 
 // 仅将未经修改的旧版完整预置清单收敛为五个品种，保留用户自定义清单和历史交易。

@@ -92,6 +92,31 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const current = ownTrade(req.params.id, req.session.userId)
   if (!current) return res.status(404).json({ error: '交易不存在' })
+  if (current.source === 'hyperliquid') {
+    const body = req.body || {}
+    for (const field of [...textFields, 'risk_plan']) {
+      if (body[field] != null && (typeof body[field] !== 'string' || body[field].length > 2000)) {
+        return res.status(400).json({ error: '文字内容不能超过 2000 字' })
+      }
+    }
+    if (body.exit_reason && !exitReasons.has(body.exit_reason)) return res.status(400).json({ error: '退出原因无效' })
+    if (!Array.isArray(body.execution_tags) || body.execution_tags.some(tag => !executionTags.has(tag)) ||
+        new Set(body.execution_tags).size !== body.execution_tags.length) return res.status(400).json({ error: '执行评价标签无效' })
+    if (body.good_trade != null && typeof body.good_trade !== 'boolean') return res.status(400).json({ error: '好交易评价无效' })
+    const resultR = body.result_r === '' || body.result_r == null ? null : Number(body.result_r)
+    if (resultR != null && (!Number.isFinite(resultR) || Math.abs(resultR) > 1000)) return res.status(400).json({ error: 'R 值无效' })
+    if ((body.exit_reason === '手动平仓' || body.execution_tags.includes('提前平仓')) &&
+        !String(body.execution_note || '').trim()) return res.status(400).json({ error: '请写明提前或手动平仓的原因' })
+    db.prepare(`UPDATE trades SET market_environment = ?, setup = ?, entry_reason = ?, invalidation = ?,
+      execution_note = ?, exit_reason = ?, execution_tags = ?, good_trade = ?, result_r = ?,
+      updated_at = datetime('now') WHERE id = ? AND user_id = ?`).run(
+      body.market_environment?.trim() || '', body.setup?.trim() || '', body.entry_reason?.trim() || '',
+      body.invalidation?.trim() || '', body.execution_note?.trim() || '', body.exit_reason || null,
+      JSON.stringify(body.execution_tags), body.good_trade == null ? null : Number(body.good_trade),
+      resultR, req.params.id, req.session.userId,
+    )
+    return res.json(ownTrade(req.params.id, req.session.userId))
+  }
   const error = validTrade(req.body || {})
   if (error) return res.status(400).json({ error })
   try {
@@ -108,7 +133,11 @@ router.put('/:id', (req, res) => {
 })
 
 router.delete('/:id', (req, res) => {
-  if (!ownTrade(req.params.id, req.session.userId)) return res.status(404).json({ error: '交易不存在' })
+  const current = ownTrade(req.params.id, req.session.userId)
+  if (!current) return res.status(404).json({ error: '交易不存在' })
+  if (current.source === 'hyperliquid' && current.status === 'open' && !current.source_detached &&
+      db.prepare('SELECT 1 FROM hyperliquid_accounts WHERE user_id = ? AND address = ?')
+        .get(req.session.userId, current.source_account)) return res.status(409).json({ error: '同步中的持仓不能删除，请先解绑账户' })
   db.prepare('DELETE FROM trades WHERE id = ? AND user_id = ?').run(req.params.id, req.session.userId)
   res.json({ success: true })
 })

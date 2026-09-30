@@ -12,6 +12,7 @@ import OpenPositions from './components/OpenPositions'
 import Dashboard from './components/Dashboard'
 import RStatsPanel from './components/RStatsPanel'
 import WeeklyGoalSettings from './components/WeeklyGoalSettings'
+import HyperliquidSettings from './components/HyperliquidSettings'
 import Settings from './components/Settings'
 import ExportBar from './components/ExportBar'
 import PwaPrompt from './components/PwaPrompt'
@@ -36,6 +37,8 @@ function AppContent() {
   const [allTrades, setAllTrades] = useState([])
   const [pairs, setPairs] = useState([])
   const [weekGoal, setWeekGoal] = useState('')
+  const [hyperliquidAccount, setHyperliquidAccount] = useState(null)
+  const [hyperliquidError, setHyperliquidError] = useState('')
   const [showForm, setShowForm] = useState(true)
   const [editing, setEditing] = useState(null)
   const [legacyEditing, setLegacyEditing] = useState(null)
@@ -60,6 +63,41 @@ function AppContent() {
     setAllTrades(result.trades)
   }, [])
 
+  const syncHyperliquidNow = useCallback(async () => {
+    try {
+      await api.syncHyperliquid()
+      await Promise.all([loadMonth(month), loadAll()])
+      setHyperliquidAccount(await api.getHyperliquid())
+      setHyperliquidError('')
+    } catch (error) {
+      setHyperliquidError(error.message)
+      setHyperliquidAccount(await api.getHyperliquid().catch(() => null))
+      throw error
+    }
+  }, [loadAll, loadMonth, month])
+
+  useEffect(() => {
+    if (!user) return
+    let active = true
+    const check = async () => {
+      const account = await api.getHyperliquid()
+      if (!active) return
+      setHyperliquidAccount(account)
+      if (account) await syncHyperliquidNow()
+    }
+    check().catch(error => { if (active) setHyperliquidError(error.message) })
+    const timer = setInterval(() => { if (active) check().catch(error => setHyperliquidError(error.message)) }, 30000)
+    return () => { active = false; clearInterval(timer) }
+  }, [user, syncHyperliquidNow])
+
+  const onHyperliquidChanged = async () => {
+    const account = await api.getHyperliquid()
+    setHyperliquidAccount(account)
+    setHyperliquidError('')
+    if (account) await syncHyperliquidNow()
+    else await Promise.all([loadMonth(month), loadAll()])
+  }
+
   useEffect(() => {
     if (!user) return
     let active = true
@@ -74,7 +112,7 @@ function AppContent() {
 
   const beginNew = () => { setEditing(null); setShowForm(true); setTab('record') }
   const beginEdit = trade => {
-    if (!trade.entry_reason) { setLegacyEditing(trade); setLegacyClosing(false); setTab('history') }
+    if (!trade.entry_reason && trade.source !== 'hyperliquid') { setLegacyEditing(trade); setLegacyClosing(false); setTab('history') }
     else { setEditing(trade); setShowForm(true); setTab('record') }
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -126,13 +164,13 @@ function AppContent() {
   }
   const logout = async () => {
     try { await api.logout() } catch (error) { console.error(error) }
-    setUser(false); setTrades([]); setAllTrades([]); setPairs([]); setWeekGoal('')
+    setUser(false); setTrades([]); setAllTrades([]); setPairs([]); setWeekGoal(''); setHyperliquidAccount(null); setHyperliquidError('')
   }
   const changeMonth = value => { setMonth(value); setSelectedDay(`${value}-01`) }
-  const quickTrades = allTrades.filter(trade => Boolean(trade.entry_reason))
-  const legacyClosed = allTrades.filter(trade => !trade.entry_reason && trade.status === 'closed' && trade.gross_pnl != null)
+  const quickTrades = allTrades.filter(trade => Boolean(trade.entry_reason) || trade.source === 'hyperliquid')
+  const legacyClosed = allTrades.filter(trade => !trade.entry_reason && trade.source !== 'hyperliquid' && trade.status === 'closed' && trade.gross_pnl != null)
   const dollarTrades = allTrades.filter(trade => trade.status === 'closed' && trade.gross_pnl != null)
-  const legacyOpen = allTrades.filter(trade => !trade.entry_reason && trade.status === 'open')
+  const legacyOpen = allTrades.filter(trade => !trade.entry_reason && trade.source !== 'hyperliquid' && trade.status === 'open')
   const legacyMissed = allTrades.filter(trade => trade.status === 'missed')
   const spreadCostMap = Object.fromEntries(pairs.map(pair => [pair.name, pair.spread_cost]))
 
@@ -168,7 +206,7 @@ function AppContent() {
       </div>}
       {tab === 'calendar' && <CalendarView month={month} trades={trades} selectedDay={selectedDay} onSelectDay={setSelectedDay} onMonthChange={changeMonth} onEdit={beginEdit} onDelete={deleteTrade} />}
       {tab === 'stats' && <div className="space-y-6"><RStatsPanel trades={allTrades} theme={theme} /><div><h2 className="text-base font-semibold mb-3">美元统计</h2><Dashboard trades={dollarTrades} spreadCostMap={spreadCostMap} theme={theme} /></div></div>}
-      {tab === 'settings' && <div className="space-y-6"><WeeklyGoalSettings onCurrentGoalChange={setWeekGoal} /><div className="bg-card border border-border rounded-xl p-4 sm:p-5"><Settings pairs={pairs} onPairsChange={setPairs} /></div><details className="bg-card border border-border rounded-xl p-4"><summary className="text-sm cursor-pointer">数据导入与导出</summary><div className="mt-4"><ExportBar onImported={() => Promise.all([loadMonth(month), loadAll()])} /></div></details></div>}
+      {tab === 'settings' && <div className="space-y-6"><WeeklyGoalSettings onCurrentGoalChange={setWeekGoal} /><HyperliquidSettings account={hyperliquidAccount} error={hyperliquidError} onChanged={onHyperliquidChanged} onSync={syncHyperliquidNow} /><div className="bg-card border border-border rounded-xl p-4 sm:p-5"><Settings pairs={pairs} onPairsChange={setPairs} /></div><details className="bg-card border border-border rounded-xl p-4"><summary className="text-sm cursor-pointer">数据导入与导出</summary><div className="mt-4"><ExportBar onImported={() => Promise.all([loadMonth(month), loadAll()])} /></div></details></div>}
     </main>
     <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border grid grid-cols-5 text-center pb-[env(safe-area-inset-bottom)]">{[['record', '记录'], ['history', '交易'], ['calendar', '日历'], ['stats', '统计'], ['settings', '设置']].map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`py-3 text-xs cursor-pointer ${tab === key ? 'text-accent font-semibold' : 'text-muted'}`}>{label}</button>)}</nav>
     {reviewId && <ReviewOverlay trades={allTrades} initialId={reviewId} pairs={pairs.map(pair => pair.name)} weekGoal={weekGoal} onClose={() => setReviewId(null)} onSaveQuick={(trade, form, images) => saveTrade(form, images, trade)} onSaveLegacy={saveReviewLegacyTrade} />}

@@ -63,6 +63,12 @@ export const api = {
     method: 'PUT', body: JSON.stringify({ content }),
   }),
 
+  // Hyperliquid 只读同步
+  getHyperliquid: () => request('/hyperliquid'),
+  bindHyperliquid: address => request('/hyperliquid', { method: 'PUT', body: JSON.stringify({ address }) }),
+  unbindHyperliquid: () => request('/hyperliquid', { method: 'DELETE' }),
+  syncHyperliquid: () => request('/hyperliquid/sync', { method: 'POST' }),
+
   // Notes
   getNotes: () => request('/notes'),
   createNote: (data) => request('/notes', { method: 'POST', body: JSON.stringify(data) }),
